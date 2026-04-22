@@ -80,6 +80,50 @@
     "is_default": {
       "type": "boolean",
       "default": false
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "recorder",
+        "fast_fill"
+      ],
+      "default": "recorder",
+      "description": "Authoring mode \u2014 recorder builds step-by-step, fast_fill is a single inject+submit action."
+    },
+    "fast_fill": {
+      "type": "object",
+      "description": "Configuration for fast_fill mode",
+      "properties": {
+        "target_url": {
+          "type": "string"
+        },
+        "domain": {
+          "type": "string"
+        },
+        "username_selector": {
+          "type": "string"
+        },
+        "password_selector": {
+          "type": "string"
+        },
+        "submit_selector": {
+          "type": "string"
+        },
+        "credential_id": {
+          "type": "string"
+        },
+        "totp_field_selector": {
+          "type": "string"
+        },
+        "auto_submit": {
+          "type": "boolean",
+          "default": true
+        },
+        "wait_after_load_ms": {
+          "type": "number",
+          "default": 400
+        }
+      }
     }
   },
   "required": [
