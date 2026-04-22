@@ -1,0 +1,32 @@
+{
+  "name": "Screenshot",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "type": "string"
+    },
+    "site": {
+      "type": "string"
+    },
+    "step_label": {
+      "type": "string"
+    },
+    "image_url": {
+      "type": "string"
+    },
+    "hash": {
+      "type": "string"
+    },
+    "is_duplicate": {
+      "type": "boolean",
+      "default": false
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "site"
+  ]
+}

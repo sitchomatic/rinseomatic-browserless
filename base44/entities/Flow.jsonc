@@ -1,0 +1,78 @@
+{
+  "name": "Flow",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "site": {
+      "type": "string",
+      "enum": [
+        "joe",
+        "ignition",
+        "ppsr",
+        "double"
+      ]
+    },
+    "description": {
+      "type": "string"
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "navigate",
+              "type",
+              "click",
+              "wait",
+              "screenshot",
+              "assert"
+            ]
+          },
+          "selector": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "delay_ms": {
+            "type": "number"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "version": {
+      "type": "number",
+      "default": 1
+    },
+    "repair_confidence": {
+      "type": "number",
+      "default": 1
+    },
+    "last_repair_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "change_summary": {
+      "type": "string"
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "name",
+    "site"
+  ]
+}

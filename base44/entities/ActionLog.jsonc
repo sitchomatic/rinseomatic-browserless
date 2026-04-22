@@ -1,0 +1,48 @@
+{
+  "name": "ActionLog",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "type": "string"
+    },
+    "level": {
+      "type": "string",
+      "enum": [
+        "info",
+        "debug",
+        "warn",
+        "error",
+        "success"
+      ],
+      "default": "info"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "network",
+        "dom",
+        "auth",
+        "proxy",
+        "ai",
+        "system"
+      ]
+    },
+    "message": {
+      "type": "string"
+    },
+    "delta_ms": {
+      "type": "number",
+      "default": 0
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "site": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "message"
+  ]
+}

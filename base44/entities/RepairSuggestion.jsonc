@@ -1,0 +1,47 @@
+{
+  "name": "RepairSuggestion",
+  "type": "object",
+  "properties": {
+    "flow_id": {
+      "type": "string"
+    },
+    "flow_name": {
+      "type": "string"
+    },
+    "site": {
+      "type": "string"
+    },
+    "failed_selector": {
+      "type": "string"
+    },
+    "suggested_selector": {
+      "type": "string"
+    },
+    "failure_reason": {
+      "type": "string"
+    },
+    "confidence": {
+      "type": "number",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "default": "pending"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reviewer_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "failed_selector"
+  ]
+}
