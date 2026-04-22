@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Filter } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import PageHeader from "@/components/shared/PageHeader";
 import CredentialsTable from "@/components/credentials/CredentialsTable";
 import CredentialDialog from "@/components/credentials/CredentialDialog";
@@ -38,7 +38,7 @@ export default function Credentials() {
 
   const filtered = items.filter((c) => {
     if (siteFilter !== "all" && c.site !== siteFilter) return false;
-    if (search && !c.username.toLowerCase().includes(search.toLowerCase())) return false;
+    if (search && !(c.username || "").toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 

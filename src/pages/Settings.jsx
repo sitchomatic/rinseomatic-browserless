@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Key, HardDrive, Shield, Database } from "lucide-react";
+import { Key, HardDrive, Database } from "lucide-react";
 import PageHeader from "@/components/shared/PageHeader";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -52,13 +52,13 @@ export default function Settings() {
       {/* Automation settings */}
       <section className="mb-8 rounded-xl border border-border bg-card p-6">
         <h2 className="text-sm font-medium mb-1">Automation</h2>
-        <p className="text-xs text-muted-foreground mb-5">Behavioral toggles for the login engine.</p>
+        <p className="text-xs text-muted-foreground mb-5">Behavioral toggles for the login engine. Saved automatically.</p>
         <div className="space-y-4">
-          <Row title="Human-emulation typing" desc="Gaussian-jittered keystroke timing (Box-Muller)." defaultChecked />
-          <Row title="Coordinate-based clicks" desc="Tap jitter and drift for realistic interaction." defaultChecked />
-          <Row title="Credential burn protection" desc="Never auto-mark a credential as burned without confirmation." />
-          <Row title="Auto proxy rotation" desc="Rotate proxy on failure or after N requests." defaultChecked />
-          <Row title="AI auto-apply repairs" desc="Dangerous. Keep off — review manually in AI Repair." />
+          <Row id="humanTyping" title="Human-emulation typing" desc="Gaussian-jittered keystroke timing (Box-Muller)." defaultChecked />
+          <Row id="coordClicks" title="Coordinate-based clicks" desc="Tap jitter and drift for realistic interaction." defaultChecked />
+          <Row id="burnProtect" title="Credential burn protection" desc="Never auto-mark a credential as burned without confirmation." />
+          <Row id="proxyRotate" title="Auto proxy rotation" desc="Rotate proxy on failure or after N requests." defaultChecked />
+          <Row id="aiAutoApply" title="AI auto-apply repairs" desc="Dangerous. Keep off — review manually in AI Repair." />
         </div>
       </section>
 
@@ -82,16 +82,6 @@ export default function Settings() {
               <Button variant="outline" onClick={saveKey}>Save</Button>
             </div>
           </div>
-          <div className="grid gap-2">
-            <Label className="flex items-center gap-2">
-              <Shield className="h-3.5 w-3.5" /> App group identifier
-            </Label>
-            <Input
-              readOnly
-              value="group.app.rork.ve5l1conjgc135kle8kuj"
-              className="font-mono text-muted-foreground"
-            />
-          </div>
         </div>
       </section>
     </div>
@@ -111,15 +101,23 @@ function HealthTile({ label, value, sub, icon: Icon, accent = "text-primary" }) 
   );
 }
 
-function Row({ title, desc, defaultChecked }) {
-  const [on, setOn] = React.useState(!!defaultChecked);
+function Row({ id, title, desc, defaultChecked }) {
+  const storageKey = `sitchomatic.toggle.${id}`;
+  const [on, setOn] = React.useState(() => {
+    const stored = localStorage.getItem(storageKey);
+    return stored == null ? !!defaultChecked : stored === "true";
+  });
+  const handleChange = (v) => {
+    setOn(v);
+    localStorage.setItem(storageKey, String(v));
+  };
   return (
     <div className="flex items-center justify-between gap-4 py-3 border-b border-border/40 last:border-0">
       <div className="min-w-0">
         <div className="text-sm font-medium">{title}</div>
         <div className="text-xs text-muted-foreground">{desc}</div>
       </div>
-      <Switch checked={on} onCheckedChange={setOn} />
+      <Switch checked={on} onCheckedChange={handleChange} />
     </div>
   );
 }

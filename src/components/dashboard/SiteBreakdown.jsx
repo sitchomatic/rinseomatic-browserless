@@ -16,7 +16,7 @@ export default function SiteBreakdown({ counts = {} }) {
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-medium">Site breakdown</h3>
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">last 24h</span>
+        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">by credential</span>
       </div>
 
       <div className="space-y-4">

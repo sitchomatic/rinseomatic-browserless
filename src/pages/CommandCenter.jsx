@@ -36,7 +36,7 @@ export default function CommandCenter() {
     queryFn: () => base44.entities.Credential.list("-created_date", 500),
   });
 
-  const activeSession = sessions.find((s) => s.status === "running") || sessions[0];
+  const activeSession = sessions.find((s) => s.status === "running") || null;
   const working = credentials.filter((c) => c.status === "working").length;
   const failed = credentials.filter((c) => c.status === "failed").length;
   const burned = credentials.filter((c) => c.status === "burned").length;
