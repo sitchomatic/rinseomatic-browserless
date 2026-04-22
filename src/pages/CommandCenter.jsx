@@ -10,6 +10,7 @@ import StatCard from "@/components/dashboard/StatCard";
 import RunProgress from "@/components/dashboard/RunProgress";
 import LiveLogStream from "@/components/dashboard/LiveLogStream";
 import SiteBreakdown from "@/components/dashboard/SiteBreakdown";
+import RepairMonitor from "@/components/dashboard/RepairMonitor";
 import StatusPill from "@/components/shared/StatusPill";
 import SiteChip from "@/components/shared/SiteChip";
 import { formatMs } from "@/lib/sites";
@@ -149,6 +150,7 @@ export default function CommandCenter() {
         </div>
 
         <div className="space-y-4">
+          <RepairMonitor />
           <SiteBreakdown counts={siteCounts} />
 
           <div className="rounded-xl border border-border bg-card p-5">
