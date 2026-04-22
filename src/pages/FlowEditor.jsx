@@ -10,6 +10,8 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@
 import { ArrowLeft, Plus, Save, Play, History, Trash2 } from "lucide-react";
 import PageHeader from "@/components/shared/PageHeader";
 import StepRow from "@/components/flows/StepRow";
+import ProfilingSummary from "@/components/flows/ProfilingSummary";
+import { computeStepProfiles } from "@/lib/step-profile";
 import { SITES } from "@/lib/sites";
 import { toast } from "sonner";
 
@@ -28,10 +30,31 @@ export default function FlowEditor() {
   });
 
   const [draft, setDraft] = React.useState(null);
+  const [showProfile, setShowProfile] = React.useState(true);
 
   React.useEffect(() => {
     if (flow) setDraft(flow);
   }, [flow]);
+
+  const { data: logs = [] } = useQuery({
+    queryKey: ["action-logs-profile"],
+    queryFn: () => base44.entities.ActionLog.list("-created_date", 1000),
+  });
+  const { data: sessions = [] } = useQuery({
+    queryKey: ["run-sessions-profile"],
+    queryFn: () => base44.entities.RunSession.list("-created_date", 200),
+  });
+
+  const { profiles, meta } = React.useMemo(() => {
+    if (!draft) return { profiles: {}, meta: {} };
+    return computeStepProfiles({
+      steps: draft.steps || [],
+      logs,
+      sessions,
+      flowName: draft.name,
+      site: draft.site,
+    });
+  }, [draft, logs, sessions]);
 
   const saveMut = useMutation({
     mutationFn: (data) => base44.entities.Flow.update(id, {
@@ -135,12 +158,22 @@ export default function FlowEditor() {
                 index={i}
                 onChange={(next) => updateStep(i, next)}
                 onRemove={() => removeStep(i)}
+                profile={profiles[s.id || `idx-${i}`]}
+                showProfile={showProfile}
               />
             ))}
           </div>
         </div>
 
         <div className="space-y-4">
+          <ProfilingSummary
+            steps={draft.steps || []}
+            profiles={profiles}
+            meta={meta}
+            enabled={showProfile}
+            onToggle={() => setShowProfile((v) => !v)}
+          />
+
           <div className="rounded-xl border border-border bg-card p-5 space-y-4">
             <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">Metadata</div>
             <div className="grid gap-2">

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Trash2, MousePointerClick, Keyboard, Globe, Timer, Camera, CheckCircle2, AlertTriangle, Repeat, CircleSlash, ArrowRightCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import StepProfileBadge from "@/components/flows/StepProfileBadge";
 
 const TYPES = {
   navigate: { label: "Navigate", icon: Globe, color: "text-sky-300", placeholder: "https://..." },
@@ -20,7 +21,7 @@ const ON_ERROR = {
   continue: { label: "Continue", icon: ArrowRightCircle, color: "text-sky-300 border-sky-500/30 bg-sky-500/10" },
 };
 
-export default function StepRow({ step, index, onChange, onRemove }) {
+export default function StepRow({ step, index, onChange, onRemove, profile, showProfile }) {
   const type = TYPES[step.type] || TYPES.click;
   const Icon = type.icon;
   const errCfg = step.on_error ? ON_ERROR[step.on_error] : null;
@@ -68,6 +69,8 @@ export default function StepRow({ step, index, onChange, onRemove }) {
         placeholder={type.placeholder}
         className="font-mono text-xs h-8 flex-1"
       />
+
+      {showProfile && <StepProfileBadge profile={profile} />}
 
       <Select
         value={step.on_error || "none"}
