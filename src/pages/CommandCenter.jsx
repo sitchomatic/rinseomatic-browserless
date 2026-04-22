@@ -1,8 +1,10 @@
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, CheckCircle2, XCircle, Clock, Gauge, KeyRound, Cpu } from "lucide-react";
+import { Play, Pause, CheckCircle2, Clock, Gauge, KeyRound, Cpu } from "lucide-react";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/shared/PageHeader";
 import StatCard from "@/components/dashboard/StatCard";
 import RunProgress from "@/components/dashboard/RunProgress";
@@ -14,6 +16,9 @@ import { formatMs } from "@/lib/sites";
 import { format } from "date-fns";
 
 export default function CommandCenter() {
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+
   const { data: sessions = [] } = useQuery({
     queryKey: ["run-sessions"],
     queryFn: () => base44.entities.RunSession.list("-created_date", 20),
@@ -43,6 +48,22 @@ export default function CommandCenter() {
     ? sessions.reduce((a, s) => a + (s.elapsed_ms || 0), 0) / sessions.length
     : 0;
 
+  const pauseAllMut = useMutation({
+    mutationFn: async () => {
+      const running = sessions.filter((s) => s.status === "running");
+      await Promise.all(
+        running.map((s) =>
+          base44.entities.RunSession.update(s.id, { status: "cancelled", ended_at: new Date().toISOString() })
+        )
+      );
+      return running.length;
+    },
+    onSuccess: (count) => {
+      qc.invalidateQueries({ queryKey: ["run-sessions"] });
+      toast.success(count ? `Paused ${count} session${count === 1 ? "" : "s"}` : "No running sessions");
+    },
+  });
+
   // Build site breakdown counts
   const siteCounts = credentials.reduce((acc, c) => {
     if (!acc[c.site]) acc[c.site] = { working: 0, failed: 0 };
@@ -65,10 +86,16 @@ export default function CommandCenter() {
         description="Live credential verification & automated login runs across all sites."
         actions={
           <>
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => pauseAllMut.mutate()}
+              disabled={pauseAllMut.isPending}
+            >
               <Pause className="h-3.5 w-3.5" /> Pause all
             </Button>
-            <Button size="sm" className="gap-2">
+            <Button size="sm" className="gap-2" onClick={() => navigate("/flows")}>
               <Play className="h-3.5 w-3.5" /> New run
             </Button>
           </>

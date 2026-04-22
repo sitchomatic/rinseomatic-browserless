@@ -2,7 +2,7 @@ import React from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
-import { GripVertical, Trash2, MousePointerClick, Keyboard, Globe, Timer, Camera, CheckCircle2 } from "lucide-react";
+import { Trash2, MousePointerClick, Keyboard, Globe, Timer, Camera, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TYPES = {
@@ -21,8 +21,7 @@ export default function StepRow({ step, index, onChange, onRemove }) {
   return (
     <div className="group flex items-center gap-3 rounded-lg border border-border bg-card/60 px-3 py-2.5 hover:border-border/80 transition-colors">
       <div className="flex items-center gap-2 text-muted-foreground">
-        <GripVertical className="h-4 w-4 cursor-grab" />
-        <span className="text-[10px] font-mono tabular-nums w-5 text-right">{String(index + 1).padStart(2, "0")}</span>
+        <span className="text-[10px] font-mono tabular-nums w-6 text-right">{String(index + 1).padStart(2, "0")}</span>
       </div>
 
       <div className={cn("h-8 w-8 rounded-md bg-secondary border border-border flex items-center justify-center shrink-0", type.color)}>

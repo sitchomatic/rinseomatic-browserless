@@ -8,8 +8,16 @@ import { Switch } from "@/components/ui/switch";
 import { Key, HardDrive, Shield, Database } from "lucide-react";
 import PageHeader from "@/components/shared/PageHeader";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export default function Settings() {
+  const [apiKey, setApiKey] = React.useState(() => localStorage.getItem("sitchomatic.grok_key") || "");
+
+  const saveKey = () => {
+    localStorage.setItem("sitchomatic.grok_key", apiKey);
+    toast.success("API key saved locally");
+  };
+
   const { data: shots = [] } = useQuery({
     queryKey: ["screenshots"],
     queryFn: () => base44.entities.Screenshot.list("-created_date", 500),
@@ -64,8 +72,14 @@ export default function Settings() {
               <Key className="h-3.5 w-3.5" /> Grok / xAI API key
             </Label>
             <div className="flex gap-2">
-              <Input placeholder="xai-•••••••••••••••••••" className="font-mono" type="password" />
-              <Button variant="outline">Save</Button>
+              <Input
+                placeholder="xai-•••••••••••••••••••"
+                className="font-mono"
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+              />
+              <Button variant="outline" onClick={saveKey}>Save</Button>
             </div>
           </div>
           <div className="grid gap-2">

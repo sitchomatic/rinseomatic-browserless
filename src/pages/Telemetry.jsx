@@ -10,6 +10,28 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const CATEGORIES = ["all", "network", "dom", "auth", "proxy", "ai", "system"];
 
+function exportLogs(logs) {
+  const rows = [
+    ["timestamp", "level", "category", "site", "delta_ms", "message"],
+    ...logs.map((l) => [
+      l.timestamp || l.created_date || "",
+      l.level || "",
+      l.category || "",
+      l.site || "",
+      l.delta_ms ?? 0,
+      (l.message || "").replace(/"/g, '""'),
+    ]),
+  ];
+  const csv = rows.map((r) => r.map((v) => `"${v}"`).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `telemetry-${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function Telemetry() {
   const [category, setCategory] = React.useState("all");
   const [search, setSearch] = React.useState("");
@@ -38,7 +60,7 @@ export default function Telemetry() {
         title="Live action stream"
         description="Delta-timestamped action events across all sessions with ms-level gap tracking."
         actions={
-          <Button variant="outline" size="sm" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => exportLogs(filtered)} disabled={filtered.length === 0}>
             <Download className="h-3.5 w-3.5" /> Export
           </Button>
         }

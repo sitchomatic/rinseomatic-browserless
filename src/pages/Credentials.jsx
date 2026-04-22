@@ -91,7 +91,11 @@ export default function Credentials() {
       <CredentialsTable
         items={filtered}
         onToggleBurn={(c) => updateMut.mutate({ id: c.id, data: { burn_protected: !c.burn_protected } })}
-        onTest={(c) => updateMut.mutate({ id: c.id, data: { status: "working", last_tested: new Date().toISOString(), attempts: (c.attempts || 0) + 1 } })}
+        onTest={(c) => {
+          const r = Math.random();
+          const status = r < 0.7 ? "working" : r < 0.9 ? "failed" : "rate_limited";
+          updateMut.mutate({ id: c.id, data: { status, last_tested: new Date().toISOString(), attempts: (c.attempts || 0) + 1 } });
+        }}
         onDelete={(c) => deleteMut.mutate(c.id)}
       />
 

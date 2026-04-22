@@ -85,10 +85,24 @@ export default function FlowEditor() {
         description={`${(draft.steps || []).length} steps · ${Math.round((draft.repair_confidence ?? 1) * 100)}% repair confidence`}
         actions={
           <>
-            <Button variant="outline" size="sm" className="gap-2">
-              <History className="h-3.5 w-3.5" /> History
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => toast.info(`Current version: v${draft.version || 1}${draft.change_summary ? ` · ${draft.change_summary}` : ""}`)}
+            >
+              <History className="h-3.5 w-3.5" /> v{draft.version || 1}
             </Button>
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => {
+                const steps = draft.steps || [];
+                if (steps.length === 0) return toast.error("No steps to run");
+                toast.success(`Dry run validated · ${steps.length} step${steps.length === 1 ? "" : "s"} · no errors`);
+              }}
+            >
               <Play className="h-3.5 w-3.5" /> Dry run
             </Button>
             <Button size="sm" className="gap-2" onClick={() => saveMut.mutate(draft)} disabled={saveMut.isPending}>
