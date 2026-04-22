@@ -12,6 +12,7 @@ import PageHeader from "@/components/shared/PageHeader";
 import StepRow from "@/components/flows/StepRow";
 import ProfilingSummary from "@/components/flows/ProfilingSummary";
 import FastFillEditor from "@/components/flows/FastFillEditor";
+import FastFillPreview from "@/components/flows/FastFillPreview";
 import { computeStepProfiles } from "@/lib/step-profile";
 import { SITES } from "@/lib/sites";
 import { Zap } from "lucide-react";
@@ -150,12 +151,18 @@ export default function FlowEditor() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-3">
           {isFastFill ? (
-            <FastFillEditor
-              value={draft.fast_fill}
-              onChange={(ff) => setDraft({ ...draft, fast_fill: ff })}
-              credentials={credentials}
-              site={draft.site}
-            />
+            <>
+              <FastFillEditor
+                value={draft.fast_fill}
+                onChange={(ff) => setDraft({ ...draft, fast_fill: ff })}
+                credentials={credentials}
+                site={draft.site}
+              />
+              <FastFillPreview
+                fastFill={draft.fast_fill || {}}
+                credentials={credentials}
+              />
+            </>
           ) : (
             <>
               <div className="flex items-center justify-between">
