@@ -47,6 +47,17 @@
           },
           "notes": {
             "type": "string"
+          },
+          "on_error": {
+            "type": "string",
+            "enum": [
+              "retry",
+              "abort",
+              "continue"
+            ]
+          },
+          "retry_count": {
+            "type": "number"
           }
         }
       }
@@ -74,5 +85,46 @@
   "required": [
     "name",
     "site"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
 }

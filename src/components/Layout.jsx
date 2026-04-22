@@ -3,13 +3,14 @@ import { NavLink, Outlet, Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   Activity, KeyRound, GitBranch, Terminal, Images,
-  Shield, Wand2, Settings, Zap, Circle,
+  Shield, Wand2, Settings, Zap, Circle, CalendarClock,
 } from "lucide-react";
 
 const NAV = [
   { to: "/", label: "Command Center", icon: Activity, end: true },
   { to: "/credentials", label: "Credentials", icon: KeyRound },
   { to: "/flows", label: "Flow Studio", icon: GitBranch },
+  { to: "/scheduling", label: "Scheduling", icon: CalendarClock },
   { to: "/telemetry", label: "Telemetry", icon: Terminal },
   { to: "/screenshots", label: "Screenshots", icon: Images },
   { to: "/proxy", label: "Proxy & VPN", icon: Shield },

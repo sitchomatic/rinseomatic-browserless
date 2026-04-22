@@ -16,6 +16,7 @@ import Screenshots from '@/pages/Screenshots';
 import ProxyVpn from '@/pages/ProxyVpn';
 import AiRepair from '@/pages/AiRepair';
 import Settings from '@/pages/Settings';
+import Scheduling from '@/pages/Scheduling';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -48,6 +49,7 @@ const AuthenticatedApp = () => {
         <Route path="/screenshots" element={<Screenshots />} />
         <Route path="/proxy" element={<ProxyVpn />} />
         <Route path="/ai-repair" element={<AiRepair />} />
+        <Route path="/scheduling" element={<Scheduling />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />

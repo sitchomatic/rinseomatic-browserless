@@ -1,0 +1,121 @@
+{
+  "name": "Schedule",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "flow_id": {
+      "type": "string"
+    },
+    "flow_name": {
+      "type": "string"
+    },
+    "site": {
+      "type": "string",
+      "enum": [
+        "joe",
+        "ignition",
+        "ppsr",
+        "double"
+      ]
+    },
+    "proxy_group": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "simple",
+        "cron"
+      ],
+      "default": "simple"
+    },
+    "interval_unit": {
+      "type": "string",
+      "enum": [
+        "minutes",
+        "hours",
+        "days"
+      ],
+      "default": "hours"
+    },
+    "interval_value": {
+      "type": "number",
+      "default": 1
+    },
+    "cron_expression": {
+      "type": "string"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "next_run_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_run_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_run_status": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "failed",
+        "running",
+        "cancelled"
+      ]
+    },
+    "run_count": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "name",
+    "flow_id"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
