@@ -8,7 +8,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
-export default function CredentialsTable({ items = [], onTest, onToggleBurn, onDelete }) {
+export default function CredentialsTable({ items = [], onTest, onToggleBurn, onDelete, onExclude }) {
   const [revealed, setRevealed] = React.useState({});
 
   const toggle = (id) => setRevealed((r) => ({ ...r, [id]: !r[id] }));
@@ -79,6 +79,13 @@ export default function CredentialsTable({ items = [], onTest, onToggleBurn, onD
                 <DropdownMenuItem onClick={() => onTest?.(c)}>Test credential</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onToggleBurn?.(c)}>
                   {c.burn_protected ? "Remove burn protection" : "Enable burn protection"}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => onExclude?.(c, "disabled")}>
+                  Mark as disabled
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onExclude?.(c, "no_account")}>
+                  Mark as no account
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-rose-400" onClick={() => onDelete?.(c)}>

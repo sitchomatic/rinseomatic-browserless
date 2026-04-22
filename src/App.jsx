@@ -14,6 +14,7 @@ import FlowEditor from '@/pages/FlowEditor';
 import Telemetry from '@/pages/Telemetry';
 import Screenshots from '@/pages/Screenshots';
 import ProxyVpn from '@/pages/ProxyVpn';
+import ProxyPools from '@/pages/ProxyPools';
 import AiRepair from '@/pages/AiRepair';
 import Settings from '@/pages/Settings';
 import Scheduling from '@/pages/Scheduling';
@@ -48,6 +49,7 @@ const AuthenticatedApp = () => {
         <Route path="/telemetry" element={<Telemetry />} />
         <Route path="/screenshots" element={<Screenshots />} />
         <Route path="/proxy" element={<ProxyVpn />} />
+        <Route path="/proxy-pools" element={<ProxyPools />} />
         <Route path="/ai-repair" element={<AiRepair />} />
         <Route path="/scheduling" element={<Scheduling />} />
         <Route path="/settings" element={<Settings />} />

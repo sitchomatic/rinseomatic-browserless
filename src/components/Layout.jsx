@@ -3,7 +3,7 @@ import { NavLink, Outlet, Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   Activity, KeyRound, GitBranch, Terminal, Images,
-  Shield, Wand2, Settings, Zap, Circle, CalendarClock,
+  Shield, Wand2, Settings, Zap, Circle, CalendarClock, Layers,
 } from "lucide-react";
 
 const NAV = [
@@ -14,6 +14,7 @@ const NAV = [
   { to: "/telemetry", label: "Telemetry", icon: Terminal },
   { to: "/screenshots", label: "Screenshots", icon: Images },
   { to: "/proxy", label: "Proxy & VPN", icon: Shield },
+  { to: "/proxy-pools", label: "Proxy Pools", icon: Layers },
   { to: "/ai-repair", label: "AI Repair", icon: Wand2 },
   { to: "/settings", label: "Settings", icon: Settings },
 ];

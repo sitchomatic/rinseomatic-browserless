@@ -11,6 +11,7 @@ import RunProgress from "@/components/dashboard/RunProgress";
 import LiveLogStream from "@/components/dashboard/LiveLogStream";
 import SiteBreakdown from "@/components/dashboard/SiteBreakdown";
 import RepairMonitor from "@/components/dashboard/RepairMonitor";
+import SessionCompare from "@/components/dashboard/SessionCompare";
 import StatusPill from "@/components/shared/StatusPill";
 import SiteChip from "@/components/shared/SiteChip";
 import { formatMs } from "@/lib/sites";
@@ -147,6 +148,7 @@ export default function CommandCenter() {
             </div>
           )}
           <LiveLogStream logs={logs} height="h-96" />
+          <SessionCompare />
         </div>
 
         <div className="space-y-4">
