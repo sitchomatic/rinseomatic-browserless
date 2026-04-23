@@ -19,9 +19,9 @@ export default function RunDetail() {
   const qc = useQueryClient();
   const [tab, setTab] = React.useState("all");
 
-  const { data: run } = useQuery({
+  const { data: run, isLoading: runLoading, isError: runError } = useQuery({
     queryKey: ["test-run", id],
-    queryFn: async () => (await base44.entities.TestRun.filter({ id }))[0],
+    queryFn: async () => (await base44.entities.TestRun.filter({ id }))[0] || null,
     refetchInterval: 2000,
     enabled: !!id,
   });
@@ -54,7 +54,29 @@ export default function RunDetail() {
     },
   });
 
-  if (!run) return <div className="p-10 text-sm text-muted-foreground">Loading run…</div>;
+  if (runLoading) {
+    return (
+      <div className="px-6 md:px-10 py-8 max-w-[1400px] mx-auto">
+        <div className="rounded-xl border border-border bg-card/40 py-20 flex items-center justify-center">
+          <div className="w-6 h-6 border-2 border-border border-t-primary rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!run || runError) {
+    return (
+      <div className="px-6 md:px-10 py-8 max-w-[1400px] mx-auto">
+        <Link to="/runs" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-mono uppercase tracking-wider mb-4">
+          <ArrowLeft className="h-3 w-3" /> back to runs
+        </Link>
+        <div className="rounded-xl border border-dashed border-border bg-card/40 py-20 text-center">
+          <div className="text-sm font-medium mb-1">Run not found</div>
+          <div className="text-xs text-muted-foreground">It may have been deleted. <button onClick={() => navigate("/runs")} className="text-primary hover:underline">View all runs</button></div>
+        </div>
+      </div>
+    );
+  }
 
   const pct = run.total_count ? Math.round(((run.total_count - (run.pending_count || 0)) / run.total_count) * 100) : 0;
 

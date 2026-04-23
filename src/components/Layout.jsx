@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { KeyRound, Play, Settings as SettingsIcon, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -9,9 +9,24 @@ const NAV = [
   { to: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
+const TITLES = {
+  "/": "Credentials · Credential Tester",
+  "/credentials": "Credentials · Credential Tester",
+  "/runs": "Test runs · Credential Tester",
+  "/settings": "Settings · Credential Tester",
+};
+
 export default function Layout() {
+  const { pathname } = useLocation();
+
+  React.useEffect(() => {
+    const base = TITLES[pathname] || (pathname.startsWith("/runs/") ? "Run detail · Credential Tester" : "Credential Tester");
+    document.title = base;
+  }, [pathname]);
+
   return (
-    <div className="min-h-screen bg-background text-foreground flex">
+    <div className="min-h-screen bg-background text-foreground md:flex">
+      {/* Desktop sidebar */}
       <aside className="w-56 shrink-0 border-r border-border bg-card/40 hidden md:flex flex-col">
         <div className="px-5 py-5 border-b border-border flex items-center gap-2">
           <div className="h-8 w-8 rounded-lg bg-primary/10 border border-primary/30 flex items-center justify-center">
@@ -38,6 +53,32 @@ export default function Layout() {
           ))}
         </nav>
       </aside>
+
+      {/* Mobile top bar */}
+      <header className="md:hidden sticky top-0 z-30 bg-card/80 backdrop-blur border-b border-border">
+        <div className="flex items-center gap-2 px-4 py-3">
+          <div className="h-7 w-7 rounded-md bg-primary/10 border border-primary/30 flex items-center justify-center">
+            <Shield className="h-3.5 w-3.5 text-primary" />
+          </div>
+          <div className="text-sm font-semibold">Credential Tester</div>
+        </div>
+        <nav className="flex items-center gap-1 px-2 pb-2 overflow-x-auto thin-scroll">
+          {NAV.map(({ to, label, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) => cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs whitespace-nowrap transition-colors",
+                isActive ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+            </NavLink>
+          ))}
+        </nav>
+      </header>
+
       <main className="flex-1 min-w-0">
         <Outlet />
       </main>

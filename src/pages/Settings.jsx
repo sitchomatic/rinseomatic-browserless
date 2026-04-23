@@ -6,8 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import PageHeader from "@/components/shared/PageHeader";
-import { Plus, Trash2, Sparkles } from "lucide-react";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
+import { Plus, Trash2, Sparkles, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 const BLANK = {
   key: "", label: "", login_url: "",
@@ -29,6 +31,7 @@ export default function Settings() {
   });
 
   const [draft, setDraft] = React.useState(BLANK);
+  const [confirmDelete, setConfirmDelete] = React.useState(null);
 
   const saveMut = useMutation({
     mutationFn: async (d) => {
@@ -79,16 +82,30 @@ export default function Settings() {
             </div>
           )}
           {sites.map((s) => (
-            <div key={s.id} className="rounded-xl border border-border bg-card p-4">
+            <div
+              key={s.id}
+              className={cn(
+                "rounded-xl border bg-card p-4 transition-colors",
+                draft.id === s.id ? "border-primary/60 ring-1 ring-primary/20" : "border-border"
+              )}
+            >
               <div className="flex items-start justify-between gap-3 mb-2">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium">{s.label} <span className="text-muted-foreground font-mono text-xs">· {s.key}</span></div>
-                  <div className="text-xs font-mono text-muted-foreground truncate">{s.login_url}</div>
+                <div className="min-w-0 flex items-center gap-2">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium flex items-center gap-2">
+                      {s.label}
+                      <span className="text-muted-foreground font-mono text-xs">· {s.key}</span>
+                      {!s.enabled && <span className="text-[10px] font-mono uppercase tracking-wider text-amber-300 border border-amber-500/30 bg-amber-500/10 rounded px-1.5 py-0.5">disabled</span>}
+                    </div>
+                    <div className="text-xs font-mono text-muted-foreground truncate">{s.login_url}</div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => setDraft(s)}>Edit</Button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => setDraft(s)}>
+                    <Pencil className="h-3 w-3" /> Edit
+                  </Button>
                   <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-rose-400"
-                    onClick={() => { if (confirm(`Delete ${s.label}?`)) deleteMut.mutate(s.id); }}>
+                    onClick={() => setConfirmDelete(s)}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -132,6 +149,16 @@ export default function Settings() {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        onOpenChange={(v) => !v && setConfirmDelete(null)}
+        title="Delete site?"
+        description={confirmDelete ? `${confirmDelete.label} (${confirmDelete.key}) will be permanently removed. Existing credentials and runs referencing this site will remain but will no longer be testable.` : ""}
+        confirmLabel="Delete site"
+        destructive
+        onConfirm={() => { if (confirmDelete) deleteMut.mutate(confirmDelete.id); setConfirmDelete(null); }}
+      />
     </div>
   );
 }

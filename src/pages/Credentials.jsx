@@ -3,9 +3,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Upload, Play } from "lucide-react";
+import { Plus, Search, Upload, Play, KeyRound, Settings as SettingsIcon } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PageHeader from "@/components/shared/PageHeader";
+import EmptyState from "@/components/shared/EmptyState";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import CredentialsTable from "@/components/credentials/CredentialsTable";
 import CredentialDialog from "@/components/credentials/CredentialDialog";
 import CsvImportDialog from "@/components/credentials/CsvImportDialog";
@@ -22,13 +24,14 @@ export default function Credentials() {
   const [search, setSearch] = React.useState("");
   const [siteFilter, setSiteFilter] = React.useState("all");
   const [selected, setSelected] = React.useState(new Set());
+  const [confirmDelete, setConfirmDelete] = React.useState(null);
 
-  const { data: sites = [] } = useQuery({
+  const { data: sites = [], isLoading: sitesLoading } = useQuery({
     queryKey: ["sites"],
     queryFn: () => base44.entities.Site.list("-created_date", 100),
   });
 
-  const { data: items = [] } = useQuery({
+  const { data: items = [], isLoading: itemsLoading } = useQuery({
     queryKey: ["credentials"],
     queryFn: () => base44.entities.Credential.list("-created_date", 2000),
   });
@@ -137,11 +140,33 @@ export default function Credentials() {
         </div>
       </div>
 
-      {sites.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border bg-card/40 py-14 text-center">
-          <p className="text-sm text-muted-foreground mb-3">No sites configured yet.</p>
-          <Button size="sm" onClick={() => navigate("/settings")}>Go to settings</Button>
+      {sitesLoading || itemsLoading ? (
+        <div className="rounded-xl border border-border bg-card/40 py-16 flex items-center justify-center">
+          <div className="w-6 h-6 border-2 border-border border-t-primary rounded-full animate-spin" />
         </div>
+      ) : sites.length === 0 ? (
+        <EmptyState
+          icon={SettingsIcon}
+          title="No sites configured yet"
+          description="Add the sites you want to test credentials against, including login URL and success markers."
+          action={<Button size="sm" onClick={() => navigate("/settings")}>Go to settings</Button>}
+        />
+      ) : items.length === 0 ? (
+        <EmptyState
+          icon={KeyRound}
+          title="Your vault is empty"
+          description="Add a single credential or import a CSV to get started."
+          action={
+            <div className="flex items-center justify-center gap-2">
+              <Button size="sm" variant="outline" className="gap-2" onClick={() => setImportOpen(true)}>
+                <Upload className="h-3.5 w-3.5" /> Import CSV
+              </Button>
+              <Button size="sm" className="gap-2" onClick={() => setAddOpen(true)}>
+                <Plus className="h-3.5 w-3.5" /> Add credential
+              </Button>
+            </div>
+          }
+        />
       ) : (
         <CredentialsTable
           items={filtered}
@@ -149,9 +174,19 @@ export default function Credentials() {
           selected={selected}
           onToggle={toggle}
           onToggleAll={toggleAll}
-          onDelete={(c) => deleteMut.mutate(c.id)}
+          onDelete={(c) => setConfirmDelete(c)}
         />
       )}
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        onOpenChange={(v) => !v && setConfirmDelete(null)}
+        title="Delete credential?"
+        description={confirmDelete ? `${confirmDelete.username} will be permanently removed.` : ""}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => { if (confirmDelete) deleteMut.mutate(confirmDelete.id); setConfirmDelete(null); }}
+      />
 
       <CredentialDialog open={addOpen} onOpenChange={setAddOpen} sites={sites} onSubmit={(d) => createMut.mutate(d)} />
       <CsvImportDialog open={importOpen} onOpenChange={setImportOpen} sites={sites} onImport={(rows) => bulkMut.mutate(rows)} />

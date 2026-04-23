@@ -12,7 +12,7 @@ export default function PageNotFound() {
 
       <div className="relative max-w-md w-full text-center space-y-8">
         <div className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">
-          <Zap className="h-3 w-3 text-primary" /> sitchomatic · error
+          <Zap className="h-3 w-3 text-primary" /> credential tester · error
         </div>
 
         <div>
@@ -31,7 +31,7 @@ export default function PageNotFound() {
           onClick={() => window.location.href = '/'}
           className="inline-flex items-center px-4 py-2 text-sm font-medium bg-secondary hover:bg-secondary/80 rounded-lg border border-border transition-colors"
         >
-          Return to Command Center
+          Back to credentials
         </button>
       </div>
     </div>

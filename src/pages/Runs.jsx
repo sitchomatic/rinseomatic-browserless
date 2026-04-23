@@ -6,6 +6,7 @@ import RunCard from "@/components/runs/RunCard";
 import { Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import EmptyState from "@/components/shared/EmptyState";
 
 export default function Runs() {
   const navigate = useNavigate();
@@ -34,10 +35,21 @@ export default function Runs() {
         }
       />
 
-      {!isLoading && runs.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border bg-card/40 py-20 text-center">
-          <div className="text-sm text-muted-foreground">No runs yet. Start one from the Credentials page.</div>
+      {isLoading ? (
+        <div className="rounded-xl border border-border bg-card/40 py-16 flex items-center justify-center">
+          <div className="w-6 h-6 border-2 border-border border-t-primary rounded-full animate-spin" />
         </div>
+      ) : runs.length === 0 ? (
+        <EmptyState
+          icon={Play}
+          title="No test runs yet"
+          description="Pick credentials in the vault and kick off a batch to test them against ScrapingBee."
+          action={
+            <Button size="sm" className="gap-2" onClick={() => navigate("/credentials")}>
+              <Play className="h-3.5 w-3.5" /> Start a run
+            </Button>
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {runs.map((r) => <RunCard key={r.id} run={r} siteLabel={siteLabel(r.site_key)} />)}
