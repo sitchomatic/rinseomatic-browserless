@@ -7,17 +7,10 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Layout from '@/components/Layout';
-import CommandCenter from '@/pages/CommandCenter';
 import Credentials from '@/pages/Credentials';
-import Flows from '@/pages/Flows';
-import FlowEditor from '@/pages/FlowEditor';
-import Telemetry from '@/pages/Telemetry';
-import Screenshots from '@/pages/Screenshots';
-import ProxyVpn from '@/pages/ProxyVpn';
-import ProxyPools from '@/pages/ProxyPools';
-import AiRepair from '@/pages/AiRepair';
+import Runs from '@/pages/Runs';
+import RunDetail from '@/pages/RunDetail';
 import Settings from '@/pages/Settings';
-import Scheduling from '@/pages/Scheduling';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -31,27 +24,17 @@ const AuthenticatedApp = () => {
   }
 
   if (authError) {
-    if (authError.type === 'user_not_registered') {
-      return <UserNotRegisteredError />;
-    } else if (authError.type === 'auth_required') {
-      navigateToLogin();
-      return null;
-    }
+    if (authError.type === 'user_not_registered') return <UserNotRegisteredError />;
+    if (authError.type === 'auth_required') { navigateToLogin(); return null; }
   }
 
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route path="/" element={<CommandCenter />} />
+        <Route path="/" element={<Credentials />} />
         <Route path="/credentials" element={<Credentials />} />
-        <Route path="/flows" element={<Flows />} />
-        <Route path="/flows/:id" element={<FlowEditor />} />
-        <Route path="/telemetry" element={<Telemetry />} />
-        <Route path="/screenshots" element={<Screenshots />} />
-        <Route path="/proxy" element={<ProxyVpn />} />
-        <Route path="/proxy-pools" element={<ProxyPools />} />
-        <Route path="/ai-repair" element={<AiRepair />} />
-        <Route path="/scheduling" element={<Scheduling />} />
+        <Route path="/runs" element={<Runs />} />
+        <Route path="/runs/:id" element={<RunDetail />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />

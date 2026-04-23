@@ -1,0 +1,73 @@
+{
+  "name": "Site",
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "string",
+      "description": "Short unique identifier (e.g. 'joe', 'ignition')"
+    },
+    "label": {
+      "type": "string"
+    },
+    "login_url": {
+      "type": "string",
+      "description": "URL of the login form"
+    },
+    "username_selector": {
+      "type": "string",
+      "default": "input[type='email'], input[name='username']"
+    },
+    "password_selector": {
+      "type": "string",
+      "default": "input[type='password']"
+    },
+    "submit_selector": {
+      "type": "string",
+      "default": "button[type='submit']"
+    },
+    "success_selector": {
+      "type": "string",
+      "description": "Optional CSS selector that is only present when logged in. Defaults to '.ol-alert__content.ol-alert__content--status_success'."
+    },
+    "success_url_contains": {
+      "type": "string",
+      "description": "Optional substring the post-submit URL must contain to count as working"
+    },
+    "login_url_marker": {
+      "type": "string",
+      "default": "/login",
+      "description": "If the post-submit URL still contains this, treat as failed (stayed on login page)"
+    },
+    "wait_after_submit_ms": {
+      "type": "number",
+      "default": 3500
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "key",
+    "label",
+    "login_url"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {},
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

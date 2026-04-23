@@ -1,46 +1,55 @@
 {
-  "name": "Credential",
+  "name": "TestResult",
   "type": "object",
   "properties": {
-    "username": {
+    "run_id": {
       "type": "string"
     },
-    "password": {
+    "credential_id": {
       "type": "string"
     },
     "site_key": {
-      "type": "string",
-      "description": "References Site.key"
+      "type": "string"
+    },
+    "username": {
+      "type": "string"
     },
     "status": {
       "type": "string",
       "enum": [
-        "untested",
+        "queued",
+        "running",
         "working",
         "failed",
-        "error",
-        "disabled"
+        "error"
       ],
-      "default": "untested"
-    },
-    "last_tested": {
-      "type": "string",
-      "format": "date-time"
-    },
-    "last_result_note": {
-      "type": "string"
+      "default": "queued"
     },
     "attempts": {
       "type": "number",
       "default": 0
     },
-    "notes": {
+    "final_url": {
       "type": "string"
+    },
+    "success_marker_found": {
+      "type": "boolean"
+    },
+    "error_message": {
+      "type": "string"
+    },
+    "elapsed_ms": {
+      "type": "number",
+      "default": 0
+    },
+    "tested_at": {
+      "type": "string",
+      "format": "date-time"
     }
   },
   "required": [
-    "username",
-    "password",
+    "run_id",
+    "credential_id",
     "site_key"
   ],
   "rls": {

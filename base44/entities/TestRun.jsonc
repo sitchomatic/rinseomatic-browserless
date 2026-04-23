@@ -1,46 +1,66 @@
 {
-  "name": "Credential",
+  "name": "TestRun",
   "type": "object",
   "properties": {
-    "username": {
-      "type": "string"
-    },
-    "password": {
+    "label": {
       "type": "string"
     },
     "site_key": {
-      "type": "string",
-      "description": "References Site.key"
+      "type": "string"
     },
     "status": {
       "type": "string",
       "enum": [
-        "untested",
-        "working",
-        "failed",
-        "error",
-        "disabled"
+        "queued",
+        "running",
+        "completed",
+        "cancelled",
+        "failed"
       ],
-      "default": "untested"
+      "default": "queued"
     },
-    "last_tested": {
-      "type": "string",
-      "format": "date-time"
+    "concurrency": {
+      "type": "number",
+      "default": 2
     },
-    "last_result_note": {
-      "type": "string"
+    "max_retries": {
+      "type": "number",
+      "default": 1
     },
-    "attempts": {
+    "total_count": {
       "type": "number",
       "default": 0
     },
-    "notes": {
-      "type": "string"
+    "pending_count": {
+      "type": "number",
+      "default": 0
+    },
+    "working_count": {
+      "type": "number",
+      "default": 0
+    },
+    "failed_count": {
+      "type": "number",
+      "default": 0
+    },
+    "error_count": {
+      "type": "number",
+      "default": 0
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ended_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "elapsed_ms": {
+      "type": "number",
+      "default": 0
     }
   },
   "required": [
-    "username",
-    "password",
     "site_key"
   ],
   "rls": {

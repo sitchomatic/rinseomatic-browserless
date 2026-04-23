@@ -3,169 +3,165 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Upload, Ban } from "lucide-react";
+import { Plus, Search, Upload, Play } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PageHeader from "@/components/shared/PageHeader";
 import CredentialsTable from "@/components/credentials/CredentialsTable";
 import CredentialDialog from "@/components/credentials/CredentialDialog";
 import CsvImportDialog from "@/components/credentials/CsvImportDialog";
-import ExcludeList from "@/components/credentials/ExcludeList";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { SITES } from "@/lib/sites";
+import NewRunDialog from "@/components/runs/NewRunDialog";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 export default function Credentials() {
   const qc = useQueryClient();
-  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const navigate = useNavigate();
+  const [addOpen, setAddOpen] = React.useState(false);
   const [importOpen, setImportOpen] = React.useState(false);
+  const [runOpen, setRunOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const [siteFilter, setSiteFilter] = React.useState("all");
-  const [view, setView] = React.useState("active");
+  const [selected, setSelected] = React.useState(new Set());
+
+  const { data: sites = [] } = useQuery({
+    queryKey: ["sites"],
+    queryFn: () => base44.entities.Site.list("-created_date", 100),
+  });
 
   const { data: items = [] } = useQuery({
     queryKey: ["credentials"],
-    queryFn: () => base44.entities.Credential.list("-created_date", 500),
+    queryFn: () => base44.entities.Credential.list("-created_date", 2000),
   });
 
   const createMut = useMutation({
     mutationFn: (data) => base44.entities.Credential.create(data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["credentials"] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["credentials"] }); toast.success("Credential added"); },
   });
-
-  const updateMut = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Credential.update(id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["credentials"] }),
+  const bulkMut = useMutation({
+    mutationFn: (rows) => base44.entities.Credential.bulkCreate(rows),
+    onSuccess: (_, rows) => { qc.invalidateQueries({ queryKey: ["credentials"] }); toast.success(`Imported ${rows.length}`); },
   });
-
   const deleteMut = useMutation({
     mutationFn: (id) => base44.entities.Credential.delete(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["credentials"] }),
   });
 
-  const bulkCreateMut = useMutation({
-    mutationFn: (rows) => base44.entities.Credential.bulkCreate(rows),
-    onSuccess: (_, rows) => {
-      qc.invalidateQueries({ queryKey: ["credentials"] });
-      toast.success(`Imported ${rows.length} credential${rows.length === 1 ? "" : "s"}`);
-    },
-  });
-
-  const isExcluded = (c) => c.excluded || c.status === "disabled" || c.status === "no_account";
-
-  const active = items.filter((c) => !isExcluded(c));
-  const excluded = items.filter(isExcluded);
-
-  const filtered = active.filter((c) => {
-    if (siteFilter !== "all" && c.site !== siteFilter) return false;
+  const filtered = items.filter((c) => {
+    if (siteFilter !== "all" && c.site_key !== siteFilter) return false;
     if (search && !(c.username || "").toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
-  const counts = {
-    all: active.length,
-    ...Object.keys(SITES).reduce((acc, k) => {
-      acc[k] = active.filter((i) => i.site === k).length;
-      return acc;
-    }, {}),
+  const toggle = (id) => setSelected((s) => {
+    const n = new Set(s);
+    n.has(id) ? n.delete(id) : n.add(id);
+    return n;
+  });
+  const toggleAll = () => setSelected((s) => s.size === filtered.length ? new Set() : new Set(filtered.map((c) => c.id)));
+
+  const selectedItems = items.filter((c) => selected.has(c.id));
+  const runSiteKey = selectedItems[0]?.site_key;
+  const sameSite = selectedItems.every((c) => c.site_key === runSiteKey);
+  const canRunSelected = selectedItems.length > 0 && sameSite;
+
+  const startRun = async ({ site_key, concurrency, max_retries, label }) => {
+    const creds = selectedItems.length > 0 ? selectedItems : items.filter((c) => c.site_key === site_key);
+    if (creds.length === 0) return toast.error("No credentials for this site");
+
+    const run = await base44.entities.TestRun.create({
+      label: label || `${creds.length} × ${site_key}`,
+      site_key, concurrency, max_retries,
+      status: "queued",
+      total_count: creds.length,
+      pending_count: creds.length,
+    });
+
+    await base44.entities.TestResult.bulkCreate(
+      creds.map((c) => ({
+        run_id: run.id,
+        credential_id: c.id,
+        site_key: c.site_key,
+        username: c.username,
+        status: "queued",
+      }))
+    );
+    toast.success(`Run started · ${creds.length} credentials`);
+    navigate(`/runs/${run.id}`);
   };
 
+  const siteCounts = sites.reduce((acc, s) => {
+    acc[s.key] = items.filter((c) => c.site_key === s.key).length;
+    return acc;
+  }, {});
+
   return (
-    <div className="px-6 md:px-10 py-8 max-w-[1600px] mx-auto">
+    <div className="px-6 md:px-10 py-8 max-w-[1400px] mx-auto">
       <PageHeader
-        eyebrow="02 · credential vault"
+        eyebrow="01 · vault"
         title="Credentials"
-        description="Vaulted credential pairs with burn protection and test history."
+        description="Stored credentials tested against real sites via ScrapingBee."
         actions={
           <>
             <Button variant="outline" size="sm" className="gap-2" onClick={() => setImportOpen(true)}>
               <Upload className="h-3.5 w-3.5" /> Import CSV
             </Button>
-            <Button size="sm" className="gap-2" onClick={() => setDialogOpen(true)}>
-              <Plus className="h-3.5 w-3.5" /> Add credential
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => setAddOpen(true)}>
+              <Plus className="h-3.5 w-3.5" /> Add
+            </Button>
+            <Button size="sm" className="gap-2"
+              onClick={() => setRunOpen(true)}
+              disabled={items.length === 0 || (selected.size > 0 && !sameSite)}
+              title={selected.size > 0 && !sameSite ? "Selected credentials must share one site" : undefined}
+            >
+              <Play className="h-3.5 w-3.5" />
+              {canRunSelected ? `Test ${selected.size} selected` : "Test all"}
             </Button>
           </>
         }
       />
 
-      <Tabs value={view} onValueChange={setView} className="mb-4">
-        <TabsList className="bg-card border border-border">
-          <TabsTrigger value="active">
-            Active <span className="ml-2 text-muted-foreground font-mono">{active.length}</span>
-          </TabsTrigger>
-          <TabsTrigger value="excluded" className="gap-1.5">
-            <Ban className="h-3 w-3" /> Exclude list
-            <span className="ml-1 text-muted-foreground font-mono">{excluded.length}</span>
-          </TabsTrigger>
-        </TabsList>
+      <div className="flex flex-col md:flex-row md:items-center gap-3 mb-5">
+        <Tabs value={siteFilter} onValueChange={setSiteFilter}>
+          <TabsList className="bg-card border border-border">
+            <TabsTrigger value="all">All <span className="ml-2 text-muted-foreground font-mono">{items.length}</span></TabsTrigger>
+            {sites.map((s) => (
+              <TabsTrigger key={s.key} value={s.key}>
+                {s.label} <span className="ml-2 text-muted-foreground font-mono">{siteCounts[s.key] || 0}</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        <div className="relative flex-1 max-w-sm md:ml-auto">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search username..." className="pl-9 font-mono h-9" />
+        </div>
+      </div>
 
-        <TabsContent value="active" className="mt-4">
-          <div className="flex flex-col md:flex-row md:items-center gap-3 mb-6">
-            <Tabs value={siteFilter} onValueChange={setSiteFilter}>
-              <TabsList className="bg-card border border-border">
-                <TabsTrigger value="all">
-                  All <span className="ml-2 text-muted-foreground font-mono">{counts.all}</span>
-                </TabsTrigger>
-                {Object.entries(SITES).map(([k, s]) => (
-                  <TabsTrigger key={k} value={k}>
-                    {s.label} <span className="ml-2 text-muted-foreground font-mono">{counts[k]}</span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
+      {sites.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border bg-card/40 py-14 text-center">
+          <p className="text-sm text-muted-foreground mb-3">No sites configured yet.</p>
+          <Button size="sm" onClick={() => navigate("/settings")}>Go to settings</Button>
+        </div>
+      ) : (
+        <CredentialsTable
+          items={filtered}
+          sites={sites}
+          selected={selected}
+          onToggle={toggle}
+          onToggleAll={toggleAll}
+          onDelete={(c) => deleteMut.mutate(c.id)}
+        />
+      )}
 
-            <div className="relative flex-1 max-w-sm md:ml-auto">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search username..."
-                className="pl-9 font-mono h-9"
-              />
-            </div>
-          </div>
-
-          <CredentialsTable
-            items={filtered}
-            onToggleBurn={(c) => updateMut.mutate({ id: c.id, data: { burn_protected: !c.burn_protected } })}
-            onTest={(c) => {
-              const r = Math.random();
-              const status = r < 0.7 ? "working" : r < 0.9 ? "failed" : "rate_limited";
-              updateMut.mutate({ id: c.id, data: { status, last_tested: new Date().toISOString(), attempts: (c.attempts || 0) + 1 } });
-            }}
-            onDelete={(c) => deleteMut.mutate(c.id)}
-            onExclude={(c, reason) => updateMut.mutate({
-              id: c.id,
-              data: {
-                excluded: true,
-                excluded_reason: reason,
-                excluded_at: new Date().toISOString(),
-                status: reason,
-              },
-            })}
-          />
-        </TabsContent>
-
-        <TabsContent value="excluded" className="mt-4">
-          <ExcludeList
-            items={excluded}
-            onRestore={(c) => updateMut.mutate({
-              id: c.id,
-              data: { excluded: false, excluded_reason: null, excluded_at: null, status: "untested" },
-            })}
-          />
-        </TabsContent>
-      </Tabs>
-
-      <CredentialDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onSubmit={(data) => createMut.mutate(data)}
-      />
-
-      <CsvImportDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        existingCredentials={items}
-        onImport={(rows) => bulkCreateMut.mutateAsync(rows)}
+      <CredentialDialog open={addOpen} onOpenChange={setAddOpen} sites={sites} onSubmit={(d) => createMut.mutate(d)} />
+      <CsvImportDialog open={importOpen} onOpenChange={setImportOpen} sites={sites} onImport={(rows) => bulkMut.mutate(rows)} />
+      <NewRunDialog
+        open={runOpen}
+        onOpenChange={setRunOpen}
+        sites={sites}
+        defaultSiteKey={runSiteKey || (siteFilter !== "all" ? siteFilter : sites[0]?.key)}
+        credentialCount={selectedItems.length > 0 ? selectedItems.length : (items.filter((c) => c.site_key === (runSiteKey || (siteFilter !== "all" ? siteFilter : sites[0]?.key))).length)}
+        onCreate={startRun}
       />
     </div>
   );
