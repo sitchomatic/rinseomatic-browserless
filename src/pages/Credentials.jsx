@@ -66,6 +66,7 @@ export default function Credentials() {
   const runSiteKey = selectedItems[0]?.site_key;
   const sameSite = selectedItems.every((c) => c.site_key === runSiteKey);
   const canRunSelected = selectedItems.length > 0 && sameSite;
+  const firstSiteWithCredentials = sites.find((s) => items.some((c) => c.site_key === s.key))?.key;
 
   const startRun = async ({ site_key, concurrency, max_retries, label }) => {
     const creds = selectedItems.length > 0 ? selectedItems : items.filter((c) => c.site_key === site_key);
@@ -194,7 +195,7 @@ export default function Credentials() {
         open={runOpen}
         onOpenChange={setRunOpen}
         sites={sites}
-        defaultSiteKey={runSiteKey || (siteFilter !== "all" ? siteFilter : sites[0]?.key)}
+        defaultSiteKey={runSiteKey || (siteFilter !== "all" ? siteFilter : firstSiteWithCredentials || sites[0]?.key)}
         credentials={selectedItems.length > 0 ? selectedItems : items}
         onCreate={startRun}
       />
