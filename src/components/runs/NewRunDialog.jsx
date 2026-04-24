@@ -5,12 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 
-export default function NewRunDialog({ open, onOpenChange, sites, defaultSiteKey, credentialCount, onCreate }) {
+export default function NewRunDialog({ open, onOpenChange, sites, defaultSiteKey, credentials, onCreate }) {
   const [form, setForm] = React.useState({ site_key: "", concurrency: 2, max_retries: 1, label: "" });
 
   React.useEffect(() => {
     if (open) setForm({ site_key: defaultSiteKey || sites?.[0]?.key || "", concurrency: 2, max_retries: 1, label: "" });
   }, [open, sites, defaultSiteKey]);
+
+  const credentialCount = (credentials || []).filter((c) => c.site_key === form.site_key).length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
