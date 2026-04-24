@@ -27,9 +27,10 @@ async function testOne(base44, site, result) {
       elapsed_ms: data.elapsed_ms ?? (Date.now() - started),
     };
   } catch (e) {
+    const details = e?.response?.data?.error || e?.response?.data?.error_message || e?.response?.data?.message || e.message;
     return {
       status: 'error',
-      error_message: e.message,
+      error_message: details,
       elapsed_ms: Date.now() - started,
     };
   }

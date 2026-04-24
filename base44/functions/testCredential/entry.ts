@@ -17,21 +17,22 @@ function buildBrowserlessUrl(apiKey, site, sessionTimeout) {
   params.set('token', apiKey);
   params.set('timeout', String(sessionTimeout));
 
-  // Proxy
-  if (site.proxy_type === 'residential') {
+  // Proxy: older saved Site records may not contain these newer fields yet.
+  const proxyType = site.proxy_type || 'residential';
+  if (proxyType === 'residential') {
     params.set('proxy', 'residential');
-    if (site.proxy_country) params.set('proxyCountry', String(site.proxy_country).trim().toLowerCase());
+    params.set('proxyCountry', String(site.proxy_country || 'au').trim().toLowerCase());
     if (site.proxy_city) params.set('proxyCity', String(site.proxy_city).trim());
-    if (site.proxy_sticky) params.set('proxySticky', 'true');
-    if (site.proxy_locale_match) params.set('proxyLocaleMatch', '1');
+    if (site.proxy_sticky !== false) params.set('proxySticky', 'true');
+    if (site.proxy_locale_match !== false) params.set('proxyLocaleMatch', '1');
     if (site.proxy_preset) params.set('proxyPreset', site.proxy_preset);
-  } else if (site.proxy_type === 'external' && site.external_proxy_url) {
+  } else if (proxyType === 'external' && site.external_proxy_url) {
     params.set('externalProxyServer', site.external_proxy_url);
   }
 
-  // Stealth & behavior toggles
-  if (site.stealth) params.set('stealth', 'true');
-  if (site.block_ads) params.set('blockAds', 'true');
+  // Stealth & behavior toggles: default to safer Browserless settings for old records.
+  if (site.stealth !== false) params.set('stealth', 'true');
+  if (site.block_ads !== false) params.set('blockAds', 'true');
   if (site.block_consent_modals) params.set('blockConsentModals', 'true');
   if (site.headless === false) params.set('headless', 'false');
   if (site.accept_insecure_certs) params.set('acceptInsecureCerts', 'true');
