@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { chromium } from 'npm:playwright-core@1.49.1';
 
-const BROWSERLESS_URL = 'https://production-sfo.browserless.io';
 const DEFAULT_SUCCESS_SELECTOR = '.ol-alert__content.ol-alert__content--status_success';
 
 function classify(site, finalUrl, markerFound) {
@@ -11,12 +11,14 @@ function classify(site, finalUrl, markerFound) {
   const urlOkByContains = successUrlContains ? finalUrl.includes(successUrlContains) : true;
   const urlChanged = urlOkByMarker && urlOkByContains;
 
-  // OR logic: either URL changed away from login page, OR success marker found
   if (urlChanged || markerFound) return 'working';
   return 'failed';
 }
 
 Deno.serve(async (req) => {
+  let browser = null;
+  const started = Date.now();
+
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -42,65 +44,44 @@ Deno.serve(async (req) => {
     const submitSelector = site.submit_selector || "button[type='submit']";
     const loginUrl = site.login_url;
 
-    // Browserless /function endpoint — runs arbitrary Puppeteer code server-side
-    const code = `
-export default async function ({ page }) {
-  await page.goto(${JSON.stringify(loginUrl)}, { waitUntil: 'networkidle2', timeout: 30000 });
+    // Connect to Browserless via CDP (each call consumes one concurrency slot)
+    const sessionTimeout = waitMs + 45000; // buffer for page load + interaction
+    const BROWSERLESS_WS = `wss://production-sfo.browserless.io?token=${apiKey}&timeout=${sessionTimeout}`;
 
-  // Fill username
-  await page.waitForSelector(${JSON.stringify(usernameSelector)}, { timeout: 10000 });
-  await page.type(${JSON.stringify(usernameSelector)}, ${JSON.stringify(username)}, { delay: 40 });
+    browser = await chromium.connectOverCDP(BROWSERLESS_WS);
+    const context = await browser.newContext();
+    const page = await context.newPage();
 
-  // Fill password
-  await page.waitForSelector(${JSON.stringify(passwordSelector)}, { timeout: 10000 });
-  await page.type(${JSON.stringify(passwordSelector)}, ${JSON.stringify(password)}, { delay: 40 });
+    await page.goto(loginUrl, { waitUntil: 'networkidle', timeout: 30000 });
 
-  // Submit
-  await page.click(${JSON.stringify(submitSelector)});
+    await page.waitForSelector(usernameSelector, { timeout: 10000 });
+    await page.type(usernameSelector, username, { delay: 40 });
 
-  // Wait for navigation / JS to settle
-  await new Promise(r => setTimeout(r, ${waitMs}));
+    await page.waitForSelector(passwordSelector, { timeout: 10000 });
+    await page.type(passwordSelector, password, { delay: 40 });
 
-  const finalUrl = page.url();
-  const markerFound = await page.evaluate((sel) => {
-    const el = document.querySelector(sel);
-    if (!el) return false;
-    const rect = el.getBoundingClientRect();
-    return rect.width > 0 && rect.height > 0;
-  }, ${JSON.stringify(successSelector)});
+    await page.click(submitSelector);
 
-  return { data: { finalUrl, markerFound } };
-}
-`;
+    // Wait for JS/navigation to settle
+    await new Promise(r => setTimeout(r, waitMs));
 
-    const started = Date.now();
-    const blRes = await fetch(`${BROWSERLESS_URL}/function?token=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/javascript' },
-      body: code,
-    });
+    const finalUrl = page.url();
+    const markerFound = await page.evaluate((sel) => {
+      const el = document.querySelector(sel);
+      if (!el) return false;
+      const rect = el.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    }, successSelector);
+
+    const status = classify(site, finalUrl, markerFound);
     const elapsed = Date.now() - started;
 
-    if (!blRes.ok) {
-      const text = await blRes.text();
-      return Response.json({
-        status: 'error',
-        error_message: `Browserless ${blRes.status}: ${text.slice(0, 300)}`,
-        elapsed_ms: elapsed,
-      });
-    }
+    return Response.json({ status, final_url: finalUrl, success_marker_found: markerFound, elapsed_ms: elapsed });
 
-    const result = await blRes.json();
-    const { finalUrl = loginUrl, markerFound = false } = result?.data || {};
-    const status = classify(site, finalUrl, markerFound);
-
-    return Response.json({
-      status,
-      final_url: finalUrl,
-      success_marker_found: markerFound,
-      elapsed_ms: elapsed,
-    });
   } catch (error) {
-    return Response.json({ status: 'error', error_message: error.message }, { status: 500 });
+    return Response.json({ status: 'error', error_message: error.message, elapsed_ms: Date.now() - started }, { status: 500 });
+  } finally {
+    // CRITICAL: always close browser to free the Browserless concurrency slot
+    if (browser) await browser.close();
   }
 });
