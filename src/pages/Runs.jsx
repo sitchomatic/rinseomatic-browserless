@@ -27,7 +27,7 @@ export default function Runs() {
       <PageHeader
         eyebrow="02 · queue"
         title="Test runs"
-        description="Manual batches tested via ScrapingBee. Runs persist — safe to close this tab."
+        description="Manual batches tested via Browserless. Runs persist — safe to close this tab."
         actions={
           <Button size="sm" className="gap-2" onClick={() => navigate("/credentials")}>
             <Play className="h-3.5 w-3.5" /> New run

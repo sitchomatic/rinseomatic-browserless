@@ -102,7 +102,7 @@ export default function Credentials() {
       <PageHeader
         eyebrow="01 · vault"
         title="Credentials"
-        description="Stored credentials tested against real sites via ScrapingBee."
+        description="Stored credentials tested against real sites via Browserless."
         actions={
           <>
             <Button variant="outline" size="sm" className="gap-2" onClick={() => setImportOpen(true)}>

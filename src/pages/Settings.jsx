@@ -63,7 +63,7 @@ export default function Settings() {
       <PageHeader
         eyebrow="03 · config"
         title="Settings"
-        description="Sites the tester can log into. ScrapingBee API key is stored server-side as a secret."
+        description="Sites the tester can log into. Browserless API key is stored server-side as a secret."
         actions={
           sites.length === 0 ? (
             <Button size="sm" variant="outline" className="gap-2" onClick={() => seedMut.mutate()} disabled={seedMut.isPending}>
