@@ -84,6 +84,21 @@
       "type": "string",
       "description": "External proxy URL format: http(s)://[username:password@]host:port"
     },
+    "supported_strategies": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "form",
+          "api",
+          "custom"
+        ]
+      },
+      "default": [
+        "form"
+      ],
+      "description": "Login strategies supported by this site"
+    },
     "enabled": {
       "type": "boolean",
       "default": true
