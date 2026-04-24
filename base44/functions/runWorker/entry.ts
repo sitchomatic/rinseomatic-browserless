@@ -1,19 +1,15 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-// Claims up to `concurrency` queued TestResults for a run, tests them in parallel,
-// and updates the TestRun counters. Designed to be invoked repeatedly from the UI
-// (simple polling) so runs survive page refresh.
-
 async function testOne(base44, site, result) {
   const started = Date.now();
   try {
-    const cred = await base44.asServiceRole.entities.Credential.filter({ id: result.credential_id });
-    const credential = cred[0];
+    const creds = await base44.asServiceRole.entities.Credential.filter({ id: result.credential_id });
+    const credential = creds[0];
     if (!credential) {
       return { status: 'error', error_message: 'Credential deleted', elapsed_ms: 0 };
     }
 
-    const res = await base44.functions.invoke('testCredential', {
+    const res = await base44.asServiceRole.functions.invoke('testCredential', {
       username: credential.username,
       password: credential.password,
       site_key: site.key,
@@ -39,8 +35,10 @@ async function testOne(base44, site, result) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Support both authenticated (from UI) and service-role (from scheduler) calls
+    let user = null;
+    try { user = await base44.auth.me(); } catch (_) {}
 
     const { run_id } = await req.json();
     if (!run_id) return Response.json({ error: 'Missing run_id' }, { status: 400 });
@@ -57,16 +55,16 @@ Deno.serve(async (req) => {
     const site = sites[0];
     if (!site) return Response.json({ error: `Site ${run.site_key} missing` }, { status: 404 });
 
-    // Claim a batch
-    const concurrency = Math.max(1, Math.min(5, run.concurrency || 2));
+    // Cap concurrency at 2 to avoid function timeouts with Playwright sessions
+    const concurrency = Math.max(1, Math.min(2, run.concurrency || 2));
+
     const queued = await base44.asServiceRole.entities.TestResult.filter(
       { run_id, status: 'queued' },
-      '-created_date',
+      'created_date',
       concurrency
     );
 
     if (queued.length === 0) {
-      // Nothing left — mark run completed
       const all = await base44.asServiceRole.entities.TestResult.filter({ run_id }, '-created_date', 5000);
       const stillRunning = all.some((r) => r.status === 'running' || r.status === 'queued');
       if (!stillRunning) {
@@ -86,7 +84,7 @@ Deno.serve(async (req) => {
       return Response.json({ done: true, processed: 0 });
     }
 
-    // Mark as running + claim
+    // Mark run as running on first batch
     if (run.status !== 'running') {
       await base44.asServiceRole.entities.TestRun.update(run_id, {
         status: 'running',
@@ -94,6 +92,7 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Claim batch atomically by marking them 'running'
     await Promise.all(queued.map((r) =>
       base44.asServiceRole.entities.TestResult.update(r.id, {
         status: 'running',
@@ -101,15 +100,15 @@ Deno.serve(async (req) => {
       })
     ));
 
-    // Execute in parallel
+    // Execute tests in parallel (capped at 2)
     const outcomes = await Promise.all(queued.map((r) => testOne(base44, site, r)));
 
-    // Persist results + retry on error
+    // Persist results + handle retries
     const maxRetries = run.max_retries ?? 1;
     await Promise.all(queued.map(async (r, i) => {
       const o = outcomes[i];
       const attempts = (r.attempts || 0) + 1;
-      const shouldRetry = o.status === 'error' && (r.attempts || 0) < maxRetries;
+      const shouldRetry = o.status === 'error' && attempts <= maxRetries;
       const finalStatus = shouldRetry ? 'queued' : o.status;
 
       await base44.asServiceRole.entities.TestResult.update(r.id, {
@@ -122,31 +121,30 @@ Deno.serve(async (req) => {
         tested_at: new Date().toISOString(),
       });
 
-      // Mirror to Credential when terminal
+      // Mirror terminal result back to the Credential record
       if (!shouldRetry && (o.status === 'working' || o.status === 'failed' || o.status === 'error')) {
         try {
-          const credStatus = o.status === 'working' ? 'working' : o.status === 'failed' ? 'failed' : 'error';
           const existing = await base44.asServiceRole.entities.Credential.filter({ id: r.credential_id });
           if (existing[0]) {
             await base44.asServiceRole.entities.Credential.update(r.credential_id, {
-              status: credStatus,
+              status: o.status === 'working' ? 'working' : o.status === 'failed' ? 'failed' : 'error',
               last_tested: new Date().toISOString(),
               last_result_note: o.error_message || (o.final_url ? `→ ${o.final_url}` : null),
               attempts: (existing[0].attempts || 0) + 1,
             });
           }
-        } catch (_) { /* ignore */ }
+        } catch (_) { /* ignore mirror failure */ }
       }
     }));
 
-    // Update run counters
+    // Recount and update run progress
     const all = await base44.asServiceRole.entities.TestResult.filter({ run_id }, '-created_date', 5000);
     const pending = all.filter((r) => r.status === 'queued' || r.status === 'running').length;
     const working = all.filter((r) => r.status === 'working').length;
     const failed = all.filter((r) => r.status === 'failed').length;
     const errored = all.filter((r) => r.status === 'error').length;
-
     const isDone = pending === 0;
+
     await base44.asServiceRole.entities.TestRun.update(run_id, {
       pending_count: pending,
       working_count: working,

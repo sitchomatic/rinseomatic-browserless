@@ -21,9 +21,6 @@ Deno.serve(async (req) => {
 
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-
     const body = await req.json();
     const { username, password, site_key } = body;
     if (!username || !password || !site_key) {
@@ -31,6 +28,7 @@ Deno.serve(async (req) => {
     }
 
     const sites = await base44.asServiceRole.entities.Site.filter({ key: site_key });
+
     const site = sites[0];
     if (!site) return Response.json({ error: `Unknown site: ${site_key}` }, { status: 404 });
 
