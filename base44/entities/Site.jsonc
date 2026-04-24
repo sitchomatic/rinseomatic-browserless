@@ -38,6 +38,10 @@
       "default": "/login",
       "description": "If the post-submit URL still contains this, treat as failed (stayed on login page)"
     },
+    "proxy_country": {
+      "type": "string",
+      "description": "Optional ISO 3166 country code to route Browserless residential proxy through (e.g. 'au' for Australia). Leave blank for no proxy."
+    },
     "wait_after_submit_ms": {
       "type": "number",
       "default": 3500

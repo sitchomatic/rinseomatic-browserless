@@ -42,7 +42,9 @@ Deno.serve(async (req) => {
     const loginUrl = site.login_url;
 
     const sessionTimeout = waitMs + 50000;
-    const browserlessUrl = `https://production-sfo.browserless.io/function?token=${apiKey}&timeout=${sessionTimeout}`;
+    const proxyCountry = site.proxy_country ? site.proxy_country.trim().toLowerCase() : '';
+    const proxyParams = proxyCountry ? `&proxy=residential&proxyCountry=${proxyCountry}&proxySticky` : '';
+    const browserlessUrl = `https://production-sfo.browserless.io/function?token=${apiKey}&timeout=${sessionTimeout}${proxyParams}`;
 
     // Puppeteer function executed remotely inside Browserless
     const fnBody = `
