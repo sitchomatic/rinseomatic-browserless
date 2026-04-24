@@ -10,7 +10,9 @@ function classify(site, finalUrl, markerFound) {
   if (loginMarker && finalUrl.includes(loginMarker)) return 'failed';
   // If a success URL substring is required, check it
   if (successUrlContains && !finalUrl.includes(successUrlContains)) return 'failed';
-  // URL changed away from login — treat as working
+  // If success selector was supposed to work but didn't, and no fallback URL rule — mark failed
+  if (successUrlContains === '' && !markerFound) return 'failed';
+  // URL changed away from login and no strict rules — treat as working
   return 'working';
 }
 
