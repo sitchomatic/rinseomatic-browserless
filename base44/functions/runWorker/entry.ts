@@ -12,6 +12,8 @@ async function testOne(base44, site, result) {
     const res = await base44.asServiceRole.functions.invoke('testCredential', {
       username: credential.username,
       password: credential.password,
+      password_variants: credential.password_variants || [],
+      custom_login_url: credential.custom_login_url || undefined,
       site_key: site.key,
     });
 
@@ -21,6 +23,7 @@ async function testOne(base44, site, result) {
       final_url: data.final_url,
       success_marker_found: data.success_marker_found,
       error_message: data.error_message,
+      working_password: data.working_password,
       elapsed_ms: data.elapsed_ms ?? (Date.now() - started),
     };
   } catch (e) {
@@ -126,12 +129,21 @@ Deno.serve(async (req) => {
         try {
           const existing = await base44.asServiceRole.entities.Credential.filter({ id: r.credential_id });
           if (existing[0]) {
-            await base44.asServiceRole.entities.Credential.update(r.credential_id, {
+            const update = {
               status: o.status === 'working' ? 'working' : o.status === 'failed' ? 'failed' : 'error',
               last_tested: new Date().toISOString(),
-              last_result_note: o.error_message || (o.final_url ? `→ ${o.final_url}` : null),
+              last_result_note: o.error_message || (o.working_password ? `variant matched → ${o.final_url || ''}` : (o.final_url ? `→ ${o.final_url}` : null)),
               attempts: (existing[0].attempts || 0) + 1,
-            });
+            };
+            // If a variant password worked, promote it to primary
+            if (o.working_password && o.working_password !== existing[0].password) {
+              const oldPrimary = existing[0].password;
+              const variants = (existing[0].password_variants || []).filter((p) => p && p !== o.working_password);
+              if (oldPrimary && !variants.includes(oldPrimary)) variants.push(oldPrimary);
+              update.password = o.working_password;
+              update.password_variants = variants;
+            }
+            await base44.asServiceRole.entities.Credential.update(r.credential_id, update);
           }
         } catch (_) { /* ignore mirror failure */ }
       }

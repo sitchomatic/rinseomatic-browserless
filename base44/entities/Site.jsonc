@@ -42,6 +42,32 @@
       "type": "number",
       "default": 3500
     },
+    "wait_until": {
+      "type": "string",
+      "enum": [
+        "load",
+        "domcontentloaded",
+        "networkidle0",
+        "networkidle2"
+      ],
+      "default": "networkidle0",
+      "description": "Page load condition before form interaction"
+    },
+    "navigation_timeout_ms": {
+      "type": "number",
+      "default": 30000,
+      "description": "Max ms to wait for page navigation"
+    },
+    "selector_timeout_ms": {
+      "type": "number",
+      "default": 10000,
+      "description": "Max ms to wait for selectors"
+    },
+    "type_delay_ms": {
+      "type": "number",
+      "default": 30,
+      "description": "Per-keystroke delay when typing into fields"
+    },
     "proxy_type": {
       "type": "string",
       "enum": [
@@ -49,26 +75,27 @@
         "residential",
         "external"
       ],
-      "default": "none",
-      "description": "Proxy type: 'residential' (Browserless built-in), 'external' (custom proxy), or 'none'"
+      "default": "residential",
+      "description": "Proxy type"
     },
     "proxy_country": {
       "type": "string",
-      "description": "ISO 3166 country code (e.g. 'au', 'us'). Used with residential proxy."
+      "default": "au",
+      "description": "ISO 3166 country code (e.g. 'au', 'us')"
     },
     "proxy_city": {
       "type": "string",
-      "description": "City name for city-level routing (requires Scale plan). Used with residential proxy."
+      "description": "City (Scale plan only)"
     },
     "proxy_sticky": {
       "type": "boolean",
-      "default": false,
-      "description": "Maintain same proxy IP across session (residential only)"
+      "default": true,
+      "description": "Maintain same proxy IP across session"
     },
     "proxy_locale_match": {
       "type": "boolean",
-      "default": false,
-      "description": "Auto-set browser language to match proxy location (residential only)"
+      "default": true,
+      "description": "Auto-set browser locale to proxy region"
     },
     "proxy_preset": {
       "type": "string",
@@ -78,11 +105,69 @@
         "px_ipv6"
       ],
       "default": "",
-      "description": "Website-specific proxy preset: 'px_gov01' for government, 'px_ipv6' for Google domains"
+      "description": "Site-specific proxy preset"
     },
     "external_proxy_url": {
       "type": "string",
-      "description": "External proxy URL format: http(s)://[username:password@]host:port"
+      "description": "External proxy: http(s)://[user:pass@]host:port"
+    },
+    "stealth": {
+      "type": "boolean",
+      "default": true,
+      "description": "Browserless stealth mode"
+    },
+    "humanlike": {
+      "type": "boolean",
+      "default": false,
+      "description": "Humanlike mouse/typing (BrowserQL only)"
+    },
+    "block_ads": {
+      "type": "boolean",
+      "default": true,
+      "description": "Block ads & trackers (uBlock)"
+    },
+    "block_consent_modals": {
+      "type": "boolean",
+      "default": false,
+      "description": "Auto-dismiss GDPR/cookie banners"
+    },
+    "headless": {
+      "type": "boolean",
+      "default": true,
+      "description": "Run headless (false = headful, may bypass detection)"
+    },
+    "slow_mo_ms": {
+      "type": "number",
+      "default": 0,
+      "description": "Delay between browser actions (ms)"
+    },
+    "accept_insecure_certs": {
+      "type": "boolean",
+      "default": false
+    },
+    "viewport_width": {
+      "type": "number",
+      "default": 1920
+    },
+    "viewport_height": {
+      "type": "number",
+      "default": 1080
+    },
+    "user_agent": {
+      "type": "string",
+      "description": "Override navigator.userAgent (optional)"
+    },
+    "accept_language": {
+      "type": "string",
+      "default": "en-AU,en;q=0.9",
+      "description": "Accept-Language HTTP header"
+    },
+    "extra_chrome_args": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Additional Chrome flags (e.g. --lang=en-AU)"
     },
     "supported_strategies": {
       "type": "array",
