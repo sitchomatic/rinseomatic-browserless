@@ -1,9 +1,10 @@
 import React from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { KeyRound, Play, Settings as SettingsIcon, Shield } from "lucide-react";
+import { KeyRound, Play, Settings as SettingsIcon, Shield, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
+  { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/credentials", label: "Credentials", icon: KeyRound },
   { to: "/runs", label: "Test runs", icon: Play },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
