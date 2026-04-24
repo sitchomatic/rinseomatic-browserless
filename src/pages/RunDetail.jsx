@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Square, CheckCircle2, XCircle, AlertTriangle, Loader2 } from "lucide-react";
+import { ArrowLeft, Square, Play, CheckCircle2, XCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import PageHeader from "@/components/shared/PageHeader";
 import StatusPill from "@/components/shared/StatusPill";
@@ -54,6 +54,24 @@ export default function RunDetail() {
     },
   });
 
+  const retestFailedMut = useMutation({
+    mutationFn: async () => {
+      const failed = results.filter((r) => r.status === "failed" || r.status === "error");
+      await Promise.all(failed.map((r) => base44.entities.TestResult.update(r.id, { status: "queued", error_message: null })));
+      await base44.entities.TestRun.update(id, {
+        status: "running",
+        pending_count: (run.pending_count || 0) + failed.length,
+        failed_count: 0,
+        error_count: 0,
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["test-run", id] });
+      qc.invalidateQueries({ queryKey: ["test-results", id] });
+      toast.success("Re-queued failed credentials");
+    },
+  });
+
   if (runLoading) {
     return (
       <div className="px-6 md:px-10 py-8 max-w-[1400px] mx-auto">
@@ -98,6 +116,11 @@ export default function RunDetail() {
             {(run.status === "running" || run.status === "queued") && (
               <Button variant="outline" size="sm" className="gap-2" onClick={() => cancelMut.mutate()}>
                 <Square className="h-3.5 w-3.5" /> Cancel
+              </Button>
+            )}
+            {(run.status === "completed" || run.status === "cancelled") && results.some((r) => r.status === "failed" || r.status === "error") && (
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => retestFailedMut.mutate()}>
+                <Play className="h-3.5 w-3.5" /> Re-test failed
               </Button>
             )}
           </>

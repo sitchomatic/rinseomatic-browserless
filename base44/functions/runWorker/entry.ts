@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
     await Promise.all(queued.map(async (r, i) => {
       const o = outcomes[i];
       const attempts = (r.attempts || 0) + 1;
-      const shouldRetry = o.status === 'error' && attempts <= maxRetries;
+      const shouldRetry = o.status === 'error' && (r.attempts || 0) < maxRetries;
       const finalStatus = shouldRetry ? 'queued' : o.status;
 
       await base44.asServiceRole.entities.TestResult.update(r.id, {
