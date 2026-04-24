@@ -44,8 +44,30 @@ Deno.serve(async (req) => {
     const loginUrl = site.login_url;
 
     const sessionTimeout = waitMs + 50000;
-    const proxyCountry = site.proxy_country ? site.proxy_country.trim().toLowerCase() : '';
-    const proxyParams = proxyCountry ? `&proxy=residential&proxyCountry=${proxyCountry}&proxySticky` : '';
+    
+    // Build proxy parameters based on site config
+    let proxyParams = '';
+    if (site.proxy_type === 'residential' && (site.proxy_country || site.proxy_city)) {
+      proxyParams += '&proxy=residential';
+      if (site.proxy_country) {
+        proxyParams += `&proxyCountry=${site.proxy_country.trim().toLowerCase()}`;
+      }
+      if (site.proxy_city) {
+        proxyParams += `&proxyCity=${site.proxy_city.trim()}`;
+      }
+      if (site.proxy_sticky) {
+        proxyParams += '&proxySticky=true';
+      }
+      if (site.proxy_locale_match) {
+        proxyParams += '&proxyLocaleMatch=1';
+      }
+      if (site.proxy_preset && site.proxy_preset !== '') {
+        proxyParams += `&proxyPreset=${site.proxy_preset}`;
+      }
+    } else if (site.proxy_type === 'external' && site.external_proxy_url) {
+      proxyParams += `&externalProxyServer=${encodeURIComponent(site.external_proxy_url)}`;
+    }
+    
     const browserlessUrl = `https://production-sfo.browserless.io/function?token=${apiKey}&timeout=${sessionTimeout}${proxyParams}`;
 
     // Puppeteer function executed remotely inside Browserless

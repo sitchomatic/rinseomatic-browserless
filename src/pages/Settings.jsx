@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import PageHeader from "@/components/shared/PageHeader";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import { Plus, Trash2, Sparkles, Pencil } from "lucide-react";
@@ -20,6 +21,13 @@ const BLANK = {
   login_url_marker: "/login",
   success_url_contains: "",
   wait_after_submit_ms: 3500,
+  proxy_type: "none",
+  proxy_country: "",
+  proxy_city: "",
+  proxy_sticky: false,
+  proxy_locale_match: false,
+  proxy_preset: "",
+  external_proxy_url: "",
   enabled: true,
 };
 
@@ -135,6 +143,48 @@ export default function Settings() {
           <Field label="Login URL marker (fail if URL still contains)" mono value={draft.login_url_marker} onChange={(v) => setDraft({ ...draft, login_url_marker: v })} />
           <Field label="Success URL contains (optional)" mono value={draft.success_url_contains || ""} onChange={(v) => setDraft({ ...draft, success_url_contains: v })} />
           <Field label="Wait after submit (ms)" type="number" value={draft.wait_after_submit_ms} onChange={(v) => setDraft({ ...draft, wait_after_submit_ms: Number(v) || 0 })} />
+          
+          <div className="pt-3 border-t border-border/40 space-y-3">
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Proxy settings</div>
+            <SelectField 
+              label="Proxy type" 
+              value={draft.proxy_type || "none"} 
+              options={[
+                { label: "None", value: "none" },
+                { label: "Residential (Browserless)", value: "residential" },
+                { label: "External proxy", value: "external" }
+              ]}
+              onChange={(v) => setDraft({ ...draft, proxy_type: v })} 
+            />
+            {(draft.proxy_type === "residential" || draft.proxy_type === undefined) && (
+              <>
+                <Field label="Country (ISO 3166 code, e.g. au, us)" value={draft.proxy_country || ""} onChange={(v) => setDraft({ ...draft, proxy_country: v })} />
+                <Field label="City (Scale plan only)" value={draft.proxy_city || ""} onChange={(v) => setDraft({ ...draft, proxy_city: v })} />
+                <SelectField 
+                  label="Preset" 
+                  value={draft.proxy_preset || ""} 
+                  options={[
+                    { label: "None", value: "" },
+                    { label: "Government sites (px_gov01)", value: "px_gov01" },
+                    { label: "Google domains (px_ipv6)", value: "px_ipv6" }
+                  ]}
+                  onChange={(v) => setDraft({ ...draft, proxy_preset: v })} 
+                />
+                <div className="flex items-center gap-2">
+                  <Switch checked={!!draft.proxy_sticky} onCheckedChange={(v) => setDraft({ ...draft, proxy_sticky: v })} />
+                  <span className="text-xs text-muted-foreground">Sticky IP (same across session)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={!!draft.proxy_locale_match} onCheckedChange={(v) => setDraft({ ...draft, proxy_locale_match: v })} />
+                  <span className="text-xs text-muted-foreground">Match locale to proxy location</span>
+                </div>
+              </>
+            )}
+            {draft.proxy_type === "external" && (
+              <Field label="Proxy URL (http(s)://[user:pass@]host:port)" value={draft.external_proxy_url || ""} onChange={(v) => setDraft({ ...draft, external_proxy_url: v })} />
+            )}
+          </div>
+
           <div className="flex items-center justify-between pt-2">
             <div className="flex items-center gap-2">
               <Switch checked={!!draft.enabled} onCheckedChange={(v) => setDraft({ ...draft, enabled: v })} />
@@ -168,6 +218,22 @@ function Field({ label, value, onChange, mono, type = "text" }) {
     <div className="grid gap-1">
       <Label className="text-xs">{label}</Label>
       <Input type={type} value={value ?? ""} onChange={(e) => onChange(e.target.value)} className={mono ? "font-mono text-xs" : ""} />
+    </div>
+  );
+}
+
+function SelectField({ label, value, options, onChange }) {
+  return (
+    <div className="grid gap-1">
+      <Label className="text-xs">{label}</Label>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          {options.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

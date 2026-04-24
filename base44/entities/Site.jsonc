@@ -38,13 +38,51 @@
       "default": "/login",
       "description": "If the post-submit URL still contains this, treat as failed (stayed on login page)"
     },
-    "proxy_country": {
-      "type": "string",
-      "description": "Optional ISO 3166 country code to route Browserless residential proxy through (e.g. 'au' for Australia). Leave blank for no proxy."
-    },
     "wait_after_submit_ms": {
       "type": "number",
       "default": 3500
+    },
+    "proxy_type": {
+      "type": "string",
+      "enum": [
+        "none",
+        "residential",
+        "external"
+      ],
+      "default": "none",
+      "description": "Proxy type: 'residential' (Browserless built-in), 'external' (custom proxy), or 'none'"
+    },
+    "proxy_country": {
+      "type": "string",
+      "description": "ISO 3166 country code (e.g. 'au', 'us'). Used with residential proxy."
+    },
+    "proxy_city": {
+      "type": "string",
+      "description": "City name for city-level routing (requires Scale plan). Used with residential proxy."
+    },
+    "proxy_sticky": {
+      "type": "boolean",
+      "default": false,
+      "description": "Maintain same proxy IP across session (residential only)"
+    },
+    "proxy_locale_match": {
+      "type": "boolean",
+      "default": false,
+      "description": "Auto-set browser language to match proxy location (residential only)"
+    },
+    "proxy_preset": {
+      "type": "string",
+      "enum": [
+        "",
+        "px_gov01",
+        "px_ipv6"
+      ],
+      "default": "",
+      "description": "Website-specific proxy preset: 'px_gov01' for government, 'px_ipv6' for Google domains"
+    },
+    "external_proxy_url": {
+      "type": "string",
+      "description": "External proxy URL format: http(s)://[username:password@]host:port"
     },
     "enabled": {
       "type": "boolean",
