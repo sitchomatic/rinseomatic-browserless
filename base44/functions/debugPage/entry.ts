@@ -9,7 +9,9 @@ Deno.serve(async (req) => {
     const apiKey = Deno.env.get('BROWSERLESS_API_KEY');
     if (!apiKey) return Response.json({ error: 'BROWSERLESS_API_KEY not set' }, { status: 500 });
 
-    const browserlessUrl = `https://production-sfo.browserless.io/function?token=${apiKey}&timeout=35000`;
+    const { proxy_country } = body;
+    const proxyParams = proxy_country ? `&proxy=residential&proxyCountry=${proxy_country.toLowerCase()}&proxySticky` : '';
+    const browserlessUrl = `https://production-sfo.browserless.io/function?token=${apiKey}&timeout=60000${proxyParams}`;
 
     const fnBody = `
       export default async ({ page }) => {
