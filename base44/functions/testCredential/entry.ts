@@ -47,8 +47,7 @@ function buildBrowserlessUrl(apiKey, site, sessionTimeout) {
     for (const a of site.extra_chrome_args) if (a && typeof a === 'string') args.push(a);
   }
   if (args.length) {
-    const launch = encodeURIComponent(JSON.stringify({ args }));
-    params.set('launch', launch);
+    params.set('launch', JSON.stringify({ args }));
   }
 
   return `https://production-sfo.browserless.io/function?${params.toString()}`;

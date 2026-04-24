@@ -107,7 +107,16 @@ export default function SiteFormPanel({ draft, setDraft, editing, onSave, onCanc
         />
         {(draft.proxy_type || "none") === "residential" && (
           <>
-            <Field label="Country (ISO code)" value={draft.proxy_country || ""} onChange={(v) => update({ proxy_country: v })} hint="e.g. au, us, gb" />
+            <SelectField label="Proxy country" value={draft.proxy_country || "au"} onChange={(v) => update({ proxy_country: v })}
+              hint="Controls the residential proxy exit country. AU is recommended for these sites."
+              options={[
+                { label: "Australia (AU)", value: "au" },
+                { label: "United States (US)", value: "us" },
+                { label: "United Kingdom (GB)", value: "gb" },
+                { label: "Canada (CA)", value: "ca" },
+                { label: "New Zealand (NZ)", value: "nz" },
+              ]}
+            />
             <Field label="City (Scale plan only)" value={draft.proxy_city || ""} onChange={(v) => update({ proxy_city: v })} />
             <SelectField label="Preset" value={draft.proxy_preset || ""}
               options={[
@@ -180,9 +189,9 @@ export default function SiteFormPanel({ draft, setDraft, editing, onSave, onCanc
       <div className="flex items-center justify-between pt-3 border-t border-border/40">
         <ToggleRow label="Enabled" checked={!!draft.enabled} onChange={(v) => update({ enabled: v })} />
         <div className="flex gap-2">
-          {editing && <Button variant="outline" size="sm" onClick={onCancel}>Cancel</Button>}
-          <Button size="sm" onClick={onSave} disabled={!draft.key || !draft.label || !draft.login_url}>
-            {editing ? "Save" : "Add"}
+          {editing && <Button variant="outline" size="sm" onClick={onCancel} title="Stop editing and discard unsaved changes">Cancel editing</Button>}
+          <Button size="sm" onClick={onSave} disabled={!draft.key || !draft.label || !draft.login_url} title="Save this site's login, proxy, stealth, and browser settings">
+            {editing ? "Save site settings" : "Add site"}
           </Button>
         </div>
       </div>

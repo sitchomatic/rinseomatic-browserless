@@ -40,6 +40,11 @@ export default function Settings() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["sites"] }); toast.success("Seeded default sites"); },
     onError: (e) => toast.error(e?.response?.data?.error || e.message),
   });
+  const normalizeMut = useMutation({
+    mutationFn: () => base44.functions.invoke("normalizeSiteDefaults", {}),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["sites"] }); toast.success("Applied AU proxy + stealth defaults"); },
+    onError: (e) => toast.error(e?.response?.data?.error || e.message),
+  });
 
   const editing = !!draft.id;
 
@@ -50,11 +55,16 @@ export default function Settings() {
         title="Settings"
         description="Per-site automation profile: selectors, proxy routing, stealth, viewport, and Chrome flags. Browserless API key is stored server-side."
         actions={
-          sites.length === 0 ? (
-            <Button size="sm" variant="outline" className="gap-2" onClick={() => seedMut.mutate()} disabled={seedMut.isPending}>
-              <Sparkles className="h-3.5 w-3.5" /> Seed defaults
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" className="gap-2" onClick={() => normalizeMut.mutate()} disabled={normalizeMut.isPending} title="Apply safe defaults to every existing site: AU residential proxy, stealth, ad blocking, timings, and browser locale">
+              <Sparkles className="h-3.5 w-3.5" /> Apply AU proxy defaults
             </Button>
-          ) : null
+            {sites.length === 0 && (
+              <Button size="sm" variant="outline" className="gap-2" onClick={() => seedMut.mutate()} disabled={seedMut.isPending} title="Create the default Joe Fortune and Ignition site records">
+                <Sparkles className="h-3.5 w-3.5" /> Seed default sites
+              </Button>
+            )}
+          </div>
         }
       />
 

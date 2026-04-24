@@ -67,6 +67,12 @@ export default function Credentials() {
   const sameSite = selectedItems.every((c) => c.site_key === runSiteKey);
   const canRunSelected = selectedItems.length > 0 && sameSite;
   const firstSiteWithCredentials = sites.find((s) => items.some((c) => c.site_key === s.key))?.key;
+  const currentFilterHasCredentials = siteFilter === "all" || items.some((c) => c.site_key === siteFilter);
+  const runDisabledReason = selected.size > 0 && !sameSite
+    ? "Selected credentials must belong to one site"
+    : !currentFilterHasCredentials
+      ? "No credentials exist for this selected site"
+      : undefined;
 
   const startRun = async ({ site_key, concurrency, max_retries, label }) => {
     const creds = selectedItems.length > 0 ? selectedItems : items.filter((c) => c.site_key === site_key);
@@ -114,11 +120,11 @@ export default function Credentials() {
             </Button>
             <Button size="sm" className="gap-2"
               onClick={() => setRunOpen(true)}
-              disabled={items.length === 0 || (selected.size > 0 && !sameSite)}
-              title={selected.size > 0 && !sameSite ? "Selected credentials must share one site" : undefined}
+              disabled={items.length === 0 || !!runDisabledReason}
+              title={runDisabledReason || "Open a test run dialog for the selected site or selected credentials"}
             >
               <Play className="h-3.5 w-3.5" />
-              {canRunSelected ? `Test ${selected.size} selected` : "Test all"}
+              {canRunSelected ? `Test ${selected.size} selected` : siteFilter !== "all" ? `Test ${siteFilter}` : "Test all"}
             </Button>
           </>
         }
