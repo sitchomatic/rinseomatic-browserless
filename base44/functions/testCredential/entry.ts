@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
     }
 
     const result = await res.json();
-    const { finalUrl, markerFound } = result;
+    const { finalUrl, markerFound } = result?.data || result;
 
     const status = classify(site, finalUrl || '', !!markerFound);
     return Response.json({ status, final_url: finalUrl, success_marker_found: !!markerFound, elapsed_ms: Date.now() - started });
