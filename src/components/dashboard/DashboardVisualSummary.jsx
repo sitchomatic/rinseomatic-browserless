@@ -30,7 +30,7 @@ export default function DashboardVisualSummary({ totals, siteStats, activeRuns }
           <CheckCircle2 className="h-4 w-4 text-emerald-300" />
         </div>
         <div className="h-48 relative">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
             <PieChart>
               <Pie data={pieData} innerRadius={62} outerRadius={82} paddingAngle={4} dataKey="value" animationDuration={700}>
                 {pieData.map((entry, index) => <Cell key={entry.name} fill={COLORS[index]} />)}
@@ -57,7 +57,7 @@ export default function DashboardVisualSummary({ totals, siteStats, activeRuns }
         </div>
         <div className="grid lg:grid-cols-[1fr_260px] gap-5">
           <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
               <BarChart data={barData} margin={{ left: -24, right: 8, top: 8, bottom: 0 }}>
                 <XAxis dataKey="name" hide />
                 <YAxis domain={[0, 100]} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
