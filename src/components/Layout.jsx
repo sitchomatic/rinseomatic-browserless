@@ -1,14 +1,16 @@
 import React from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { KeyRound, Play, Settings as SettingsIcon, Shield, LayoutDashboard } from "lucide-react";
+import { KeyRound, Play, Settings as SettingsIcon, Shield, LayoutDashboard, Terminal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AuditEventTracker from "@/components/audit/AuditEventTracker";
+import NetworkTerminalTracker from "@/components/terminal/NetworkTerminalTracker";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/credentials", label: "Credentials", icon: KeyRound },
   { to: "/runs", label: "Test runs", icon: Play },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
+  { to: "/terminal", label: "Terminal", icon: Terminal },
 ];
 
 const TITLES = {
@@ -16,6 +18,7 @@ const TITLES = {
   "/credentials": "Credentials · Credential Tester",
   "/runs": "Test runs · Credential Tester",
   "/settings": "Settings · Credential Tester",
+  "/terminal": "Terminal · Credential Tester",
 };
 
 export default function Layout() {
@@ -29,6 +32,7 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-background text-foreground md:flex">
       <AuditEventTracker />
+      <NetworkTerminalTracker />
       {/* Desktop sidebar */}
       <aside className="w-56 shrink-0 border-r border-border bg-card/40 hidden md:flex flex-col">
         <div className="px-5 py-5 border-b border-border flex items-center gap-2">

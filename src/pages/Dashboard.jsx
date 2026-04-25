@@ -11,6 +11,7 @@ import DashboardVisualSummary from "@/components/dashboard/DashboardVisualSummar
 import SchedulerHealthCard from "@/components/dashboard/SchedulerHealthCard";
 import NetworkDiagnosticsPanel from "@/components/network/NetworkDiagnosticsPanel";
 import LiveAuditLog from "@/components/audit/LiveAuditLog";
+import TerminalLiveLog from "@/components/terminal/TerminalLiveLog";
 import { Button } from "@/components/ui/button";
 import { runInBatches } from "@/lib/batches";
 import { toast } from "sonner";
@@ -118,6 +119,8 @@ export default function Dashboard() {
       <SchedulerHealthCard />
 
       <NetworkDiagnosticsPanel />
+
+      <TerminalLiveLog compact />
 
       <LiveAuditLog compact />
 

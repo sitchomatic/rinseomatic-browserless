@@ -12,6 +12,7 @@ import Runs from '@/pages/Runs';
 import RunDetail from '@/pages/RunDetail';
 import Settings from '@/pages/Settings';
 import Dashboard from '@/pages/Dashboard';
+import Terminal from '@/pages/Terminal';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -37,6 +38,7 @@ const AuthenticatedApp = () => {
         <Route path="/runs" element={<Runs />} />
         <Route path="/runs/:id" element={<RunDetail />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/terminal" element={<Terminal />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
