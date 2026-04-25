@@ -9,6 +9,7 @@ import PageHeader from "@/components/shared/PageHeader";
 import StatusPill from "@/components/shared/StatusPill";
 import SiteChip from "@/components/shared/SiteChip";
 import ResultsTable from "@/components/runs/ResultsTable";
+import RunEvidencePanel from "@/components/runs/RunEvidencePanel";
 import NetworkDiagnosticsPanel from "@/components/network/NetworkDiagnosticsPanel";
 import { formatMs } from "@/lib/sites";
 import { runProgress, summarizeResults } from "@/lib/runMetrics";
@@ -170,6 +171,8 @@ export default function RunDetail() {
       </div>
 
       <NetworkDiagnosticsPanel compact className="mb-6" />
+
+      <RunEvidencePanel runId={id} />
 
       <div className="h-1.5 bg-secondary rounded-full overflow-hidden mb-6">
         <div className="h-full bg-primary transition-all" style={{ width: `${progress.percent}%` }} />

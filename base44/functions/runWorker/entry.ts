@@ -12,6 +12,9 @@ async function testOne(base44, site, result, credential) {
       password: credential.password,
       password_variants: credential.password_variants || [],
       site_key: site.key,
+      run_id: result.run_id,
+      result_id: result.id,
+      credential_id: credential.id,
     });
 
     const data = res?.data || res;

@@ -1,10 +1,7 @@
 {
-  "name": "Screenshot",
+  "name": "AutomationDebugReport",
   "type": "object",
   "properties": {
-    "session_id": {
-      "type": "string"
-    },
     "run_id": {
       "type": "string"
     },
@@ -14,28 +11,26 @@
     "credential_id": {
       "type": "string"
     },
-    "username": {
-      "type": "string"
-    },
     "site": {
       "type": "string"
     },
-    "step_label": {
+    "username": {
       "type": "string"
     },
-    "step_index": {
-      "type": "number",
-      "default": 0
+    "status": {
+      "type": "string",
+      "enum": [
+        "working",
+        "failed",
+        "error"
+      ]
     },
-    "image_url": {
+    "final_url": {
       "type": "string"
     },
-    "hash": {
-      "type": "string"
-    },
-    "is_duplicate": {
-      "type": "boolean",
-      "default": false
+    "report_json": {
+      "type": "string",
+      "description": "Stringified JS scenario execution report"
     },
     "captured_at": {
       "type": "string",
@@ -43,6 +38,8 @@
     }
   },
   "required": [
+    "run_id",
+    "result_id",
     "site"
   ],
   "rls": {

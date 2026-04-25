@@ -1,0 +1,98 @@
+import React from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
+import { Camera, FileJson } from "lucide-react";
+import { format } from "date-fns";
+import StatusPill from "@/components/shared/StatusPill";
+
+export default function RunEvidencePanel({ runId }) {
+  const qc = useQueryClient();
+  const { data: screenshots = [] } = useQuery({
+    queryKey: ["run-screenshots", runId],
+    queryFn: () => base44.entities.Screenshot.filter({ run_id: runId }, "created_date", 5000),
+    enabled: !!runId,
+  });
+  const { data: reports = [] } = useQuery({
+    queryKey: ["run-debug-reports", runId],
+    queryFn: () => base44.entities.AutomationDebugReport.filter({ run_id: runId }, "-created_date", 1000),
+    enabled: !!runId,
+  });
+
+  React.useEffect(() => {
+    if (!runId) return;
+    const unsubScreens = base44.entities.Screenshot.subscribe((event) => {
+      if (event.type === "delete") {
+        qc.setQueryData(["run-screenshots", runId], (current = []) => current.filter((item) => item.id !== event.id));
+        return;
+      }
+      if (event.data?.run_id !== runId) return;
+      qc.setQueryData(["run-screenshots", runId], (current = []) => {
+        const next = [event.data, ...current.filter((item) => item.id !== event.id)];
+        return next.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+      });
+    });
+    const unsubReports = base44.entities.AutomationDebugReport.subscribe((event) => {
+      if (event.type === "delete") {
+        qc.setQueryData(["run-debug-reports", runId], (current = []) => current.filter((item) => item.id !== event.id));
+        return;
+      }
+      if (event.data?.run_id !== runId) return;
+      qc.setQueryData(["run-debug-reports", runId], (current = []) => [event.data, ...current.filter((item) => item.id !== event.id)]);
+    });
+    return () => { unsubScreens(); unsubReports(); };
+  }, [runId, qc]);
+
+  return (
+    <section className="rounded-2xl border border-border bg-card/80 shadow-sm overflow-hidden mb-6">
+      <div className="px-5 py-4 border-b border-border/70 bg-secondary/20 flex items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2 text-sm font-semibold"><Camera className="h-4 w-4 text-primary" /> Automation evidence</div>
+          <p className="text-xs text-muted-foreground mt-1">Multi-screenshot timeline and JS scenario debug reports for this run.</p>
+        </div>
+        <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">{screenshots.length} shots · {reports.length} reports</div>
+      </div>
+
+      {screenshots.length === 0 && reports.length === 0 ? (
+        <div className="px-5 py-10 text-sm text-muted-foreground text-center">Evidence will appear here as credentials are tested.</div>
+      ) : (
+        <div className="p-5 space-y-5">
+          {screenshots.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+              {screenshots.map((shot) => (
+                <a key={shot.id} href={shot.image_url} target="_blank" rel="noreferrer" className="group rounded-xl border border-border bg-secondary/20 overflow-hidden hover:border-primary/40 transition-colors">
+                  <div className="aspect-video bg-background overflow-hidden">
+                    <img src={shot.image_url} alt={shot.step_label || "Automation screenshot"} className="h-full w-full object-cover group-hover:scale-[1.02] transition-transform" />
+                  </div>
+                  <div className="p-3 min-w-0">
+                    <div className="text-xs font-medium truncate">{shot.step_label || "Screenshot"}</div>
+                    <div className="text-[10px] font-mono text-muted-foreground mt-1 truncate">{shot.username || "credential"} · {shot.captured_at ? format(new Date(shot.captured_at), "HH:mm:ss") : "—"}</div>
+                  </div>
+                </a>
+              ))}
+            </div>
+          )}
+
+          {reports.length > 0 && (
+            <div className="rounded-xl border border-border/70 bg-secondary/20 divide-y divide-border/60 overflow-hidden">
+              {reports.map((report) => (
+                <details key={report.id} className="group">
+                  <summary className="cursor-pointer list-none px-4 py-3 flex items-center justify-between gap-3 hover:bg-secondary/30">
+                    <div className="min-w-0 flex items-center gap-2">
+                      <FileJson className="h-4 w-4 text-primary shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-xs font-medium truncate">{report.username || "credential"}</div>
+                        <div className="text-[10px] font-mono text-muted-foreground truncate">{report.final_url || "No final URL"}</div>
+                      </div>
+                    </div>
+                    <StatusPill status={report.status || "info"} />
+                  </summary>
+                  <pre className="max-h-80 overflow-auto thin-scroll p-4 text-[11px] bg-background/70 text-muted-foreground whitespace-pre-wrap">{report.report_json || "{}"}</pre>
+                </details>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}

@@ -53,6 +53,44 @@ function buildBrowserlessUrl(apiKey, site, sessionTimeout, proxyTypeOverride) {
   return `https://production-sfo.browserless.io/function?${params.toString()}`;
 }
 
+async function uploadScreenshot(base44, shot, context) {
+  if (!shot?.base64) return null;
+  const binary = Uint8Array.from(atob(shot.base64), (char) => char.charCodeAt(0));
+  const safeStep = String(shot.step_label || 'screenshot').replace(/[^a-z0-9_-]+/gi, '-').toLowerCase();
+  const file = new File([binary], `${context.run_id || 'manual'}-${context.result_id || crypto.randomUUID()}-${safeStep}.png`, { type: 'image/png' });
+  const uploaded = await base44.asServiceRole.integrations.Core.UploadFile({ file });
+  return base44.asServiceRole.entities.Screenshot.create({
+    session_id: context.run_id || context.result_id || 'manual',
+    run_id: context.run_id || null,
+    result_id: context.result_id || null,
+    credential_id: context.credential_id || null,
+    username: context.username,
+    site: context.site_key,
+    step_label: shot.step_label,
+    step_index: shot.step_index || 0,
+    image_url: uploaded.file_url,
+    captured_at: new Date().toISOString(),
+  });
+}
+
+async function saveEvidence(base44, result, context) {
+  const shots = Array.isArray(result.screenshots) ? result.screenshots : [];
+  await Promise.all(shots.map((shot) => uploadScreenshot(base44, shot, context)));
+  if (context.run_id && context.result_id) {
+    await base44.asServiceRole.entities.AutomationDebugReport.create({
+      run_id: context.run_id,
+      result_id: context.result_id,
+      credential_id: context.credential_id || null,
+      site: context.site_key,
+      username: context.username,
+      status: result.status || 'error',
+      final_url: result.finalUrl || '',
+      report_json: JSON.stringify(result.debugReport || {}, null, 2),
+      captured_at: new Date().toISOString(),
+    });
+  }
+}
+
 async function attemptLogin({ browserlessUrl, site, username, password }) {
   const waitMs = site.wait_after_submit_ms ?? 3500;
   const successSelector = site.success_selector || DEFAULT_SUCCESS_SELECTOR;
@@ -89,20 +127,34 @@ async function attemptLogin({ browserlessUrl, site, username, password }) {
       if (userAgent) await page.setUserAgent(userAgent);
       if (acceptLang) await page.setExtraHTTPHeaders({ 'Accept-Language': acceptLang });
 
+      const screenshots = [];
+      const debugReport = { steps: [], started_at: new Date().toISOString(), login_url: loginUrl };
+      const capture = async (step_label, step_index) => {
+        const url = page.url();
+        const title = await page.title().catch(() => '');
+        const base64 = await page.screenshot({ encoding: 'base64', fullPage: false }).catch(() => null);
+        debugReport.steps.push({ step_label, step_index, url, title, captured_at: new Date().toISOString() });
+        if (base64) screenshots.push({ step_label, step_index, base64 });
+      };
+
       await page.goto(loginUrl, { waitUntil, timeout: navTimeout });
+      await capture('01 login page loaded', 1);
 
       await page.waitForSelector(userSel, { timeout: selTimeout });
       await page.click(userSel, { clickCount: 3 });
       await page.type(userSel, user, { delay: typeDelay });
+      await capture('02 username entered', 2);
 
       await page.waitForSelector(passSel, { timeout: selTimeout });
       await page.click(passSel, { clickCount: 3 });
       await page.type(passSel, pass, { delay: typeDelay });
+      await capture('03 password entered', 3);
 
       await page.waitForSelector(submitSel, { timeout: selTimeout });
       await page.click(submitSel);
 
       await new Promise(r => setTimeout(r, waitMs));
+      await capture('04 after submit', 4);
 
       const finalUrl = page.url();
       const markerFound = await page.evaluate((sel) => {
@@ -112,7 +164,10 @@ async function attemptLogin({ browserlessUrl, site, username, password }) {
         return rect.width > 0 && rect.height > 0;
       }, successSel);
 
-      return { data: { finalUrl, markerFound }, type: 'application/json' };
+      debugReport.finished_at = new Date().toISOString();
+      debugReport.final_url = finalUrl;
+      debugReport.success_marker_found = markerFound;
+      return { data: { finalUrl, markerFound, screenshots, debugReport }, type: 'application/json' };
     };
   `;
 
@@ -127,8 +182,8 @@ async function attemptLogin({ browserlessUrl, site, username, password }) {
     return { error: `Browserless ${res.status}: ${errText.slice(0, 400)}` };
   }
   const result = await res.json();
-  const { finalUrl, markerFound } = result?.data || result || {};
-  return { finalUrl: finalUrl || '', markerFound: !!markerFound };
+  const { finalUrl, markerFound, screenshots, debugReport } = result?.data || result || {};
+  return { finalUrl: finalUrl || '', markerFound: !!markerFound, screenshots: screenshots || [], debugReport: debugReport || {} };
 }
 
 Deno.serve(async (req) => {
@@ -136,7 +191,7 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json();
-    const { username, password, site_key, password_variants, custom_login_url } = body;
+    const { username, password, site_key, password_variants, custom_login_url, run_id, result_id, credential_id } = body;
 
     if (!username || !password || !site_key) {
       return Response.json({ error: 'Missing username/password/site_key' }, { status: 400 });
@@ -178,6 +233,7 @@ Deno.serve(async (req) => {
       }
       const status = classify(site, r.finalUrl, r.markerFound);
       lastResult = { ...r, status };
+      await saveEvidence(base44, lastResult, { run_id, result_id, credential_id, username, site_key });
       if (status === 'working') {
         workingPassword = pwd;
         break;
