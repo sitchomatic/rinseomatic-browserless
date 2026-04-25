@@ -2,10 +2,11 @@ import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/shared/PageHeader";
-import { CheckCircle2, XCircle, AlertTriangle, Clock } from "lucide-react";
+import { CheckCircle2, XCircle, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatMs } from "@/lib/sites";
 import { buildDashboardMetrics } from "@/lib/dashboardMetrics";
+import MaintenanceStatusBadge from "@/components/dashboard/MaintenanceStatusBadge";
 
 export default function Dashboard() {
   const { data: sites = [], isLoading: sitesLoading } = useQuery({
@@ -22,15 +23,15 @@ export default function Dashboard() {
   const isLoading = sitesLoading || runsLoading;
 
   return (
-    <div className="px-6 md:px-10 py-8 max-w-[1400px] mx-auto">
+    <div className="px-6 md:px-10 py-8 max-w-[1400px] mx-auto space-y-8">
       <PageHeader
         eyebrow="00 · overview"
         title="Dashboard"
-        description="Last completed run results per site."
+        description="Maintenance status by site, based on the latest completed credential test run."
+        className="mb-0"
       />
 
-      {/* Global summary tiles */}
-      <div className="grid grid-cols-3 gap-3 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <SummaryTile label="Total tested" value={totals.tested} icon={Clock} />
         <SummaryTile label="Working" value={totals.working} icon={CheckCircle2} accent="text-emerald-300" />
         <SummaryTile label="Failed / Error" value={totals.failed} icon={XCircle} accent="text-rose-300" />
@@ -45,11 +46,20 @@ export default function Dashboard() {
           <div className="text-sm text-muted-foreground">No sites configured yet.</div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {siteStats.map(({ site, lastRun }) => (
-            <SiteCard key={site.key} site={site} lastRun={lastRun} />
-          ))}
-        </div>
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold">Site maintenance</h2>
+              <p className="text-xs text-muted-foreground mt-1">Quickly spot healthy, monitored, and critical sites.</p>
+            </div>
+            <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">{siteStats.length} sites</div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            {siteStats.map(({ site, lastRun }) => (
+              <SiteCard key={site.key} site={site} lastRun={lastRun} />
+            ))}
+          </div>
+        </section>
       )}
     </div>
   );
@@ -65,28 +75,18 @@ function SiteCard({ site, lastRun }) {
   const hasRun = !!lastRun;
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5 flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <div className="text-sm font-semibold">{site.label}</div>
-          <div className="text-[10px] font-mono text-muted-foreground mt-0.5 truncate max-w-[260px]">{site.login_url}</div>
+    <div className="rounded-2xl border border-border bg-card/80 p-5 shadow-sm hover:border-primary/30 transition-colors flex flex-col gap-5">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="text-base font-semibold truncate">{site.label}</div>
+          <div className="text-[10px] font-mono text-muted-foreground mt-1 truncate max-w-[320px]">{site.login_url}</div>
         </div>
-        {hasRun ? (
-          passRate >= 80 ? (
-            <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
-          ) : passRate >= 40 ? (
-            <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
-          ) : (
-            <XCircle className="h-5 w-5 text-rose-400 shrink-0 mt-0.5" />
-          )
-        ) : (
-          <Clock className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-        )}
+        <MaintenanceStatusBadge hasRun={hasRun} passRate={passRate} />
       </div>
 
       {hasRun ? (
         <>
-          <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="grid grid-cols-3 gap-3 text-center">
             <Stat label="Working" value={working} color="text-emerald-300" />
             <Stat label="Failed" value={failed} color="text-rose-300" />
             <Stat label="Total" value={total} />
@@ -124,8 +124,8 @@ function SiteCard({ site, lastRun }) {
 
 function SummaryTile({ label, value, icon: Icon, accent }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <div className="flex items-center justify-between mb-2">
+    <div className="rounded-2xl border border-border bg-card/80 p-5 shadow-sm">
+      <div className="flex items-center justify-between mb-3">
         <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">{label}</div>
         <Icon className={`h-3.5 w-3.5 ${accent || "text-muted-foreground"}`} />
       </div>
@@ -136,9 +136,9 @@ function SummaryTile({ label, value, icon: Icon, accent }) {
 
 function Stat({ label, value, color }) {
   return (
-    <div>
+    <div className="rounded-xl border border-border/70 bg-secondary/30 px-3 py-3">
       <div className={`text-xl font-semibold tabular-nums ${color || ""}`}>{value}</div>
-      <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1">{label}</div>
     </div>
   );
 }
