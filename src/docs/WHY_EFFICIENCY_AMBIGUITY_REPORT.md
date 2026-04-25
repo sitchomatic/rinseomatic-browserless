@@ -38,7 +38,7 @@ Implemented core logic rewrites:
 - `lib/dashboardMetrics.js`: single-pass dashboard rollups.
 - `lib/runPlanning.js`: shared run limits, normalization, and counting.
 - `functions/runWorker`: reduced duplicate entity reads and replaced repeated full-result recounting with incremental run progress updates.
-- `pages/RunDetail`: summary-driven progress and filtering.
+- `pages/RunDetail`: summary-driven progress, filtering, and real-time run/result subscriptions instead of constant polling.
 - `pages/Dashboard`: centralized dashboard model.
 - `components/runs/NewRunDialog`: aligned UI with backend execution limits.
 

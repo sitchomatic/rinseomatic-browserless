@@ -23,17 +23,12 @@ export default function RunDetail() {
   const { data: run, isLoading: runLoading, isError: runError } = useQuery({
     queryKey: ["test-run", id],
     queryFn: async () => (await base44.entities.TestRun.filter({ id }))[0] || null,
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      return status === "queued" || status === "running" ? 5000 : false;
-    },
     enabled: !!id,
   });
 
   const { data: results = [] } = useQuery({
     queryKey: ["test-results", id],
     queryFn: () => base44.entities.TestResult.filter({ run_id: id }, "-created_date", 5000),
-    refetchInterval: run?.status === "queued" || run?.status === "running" ? 5000 : false,
     enabled: !!id,
   });
 
@@ -42,6 +37,26 @@ export default function RunDetail() {
     queryFn: () => base44.entities.Site.list("-created_date", 100),
   });
   const siteLabel = sites.find((s) => s.key === run?.site_key)?.label || run?.site_key;
+
+  React.useEffect(() => {
+    if (!id) return;
+
+    const unsubscribeRun = base44.entities.TestRun.subscribe((event) => {
+      if (event.id !== id) return;
+      qc.setQueryData(["test-run", id], event.type === "delete" ? null : event.data);
+    });
+
+    const unsubscribeResults = base44.entities.TestResult.subscribe((event) => {
+      if (event.type === "delete" || event.data?.run_id === id) {
+        qc.invalidateQueries({ queryKey: ["test-results", id] });
+      }
+    });
+
+    return () => {
+      unsubscribeRun();
+      unsubscribeResults();
+    };
+  }, [id, qc]);
 
   useRunWorker(run);
 
