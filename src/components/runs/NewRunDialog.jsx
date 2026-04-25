@@ -5,12 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { countCredentialsForSite, MAX_BROWSER_SESSIONS, MAX_RETRIES, normalizeRunForm } from "@/lib/runPlanning";
+import RunEvidenceOptions from "@/components/runs/RunEvidenceOptions";
 
 export default function NewRunDialog({ open, onOpenChange, sites, defaultSiteKey, credentials, onCreate }) {
-  const [form, setForm] = React.useState({ site_key: "", concurrency: 2, max_retries: 1, recording_mode: "none", label: "" });
+  const [form, setForm] = React.useState({ site_key: "", concurrency: 2, max_retries: 1, screenshot_mode: "key_steps", recording_mode: "none", label: "" });
 
   React.useEffect(() => {
-    if (open) setForm({ site_key: defaultSiteKey || sites?.[0]?.key || "", concurrency: MAX_BROWSER_SESSIONS, max_retries: 1, recording_mode: "none", label: "" });
+    if (open) setForm({ site_key: defaultSiteKey || sites?.[0]?.key || "", concurrency: MAX_BROWSER_SESSIONS, max_retries: 1, screenshot_mode: "key_steps", recording_mode: "none", label: "" });
   }, [open, sites, defaultSiteKey]);
 
   const normalizedForm = React.useMemo(() => normalizeRunForm(form), [form]);
@@ -48,17 +49,7 @@ export default function NewRunDialog({ open, onOpenChange, sites, defaultSiteKey
                 onChange={(e) => setForm({ ...form, max_retries: e.target.value })} />
             </div>
           </div>
-          <div className="grid gap-2">
-            <Label>Record this run</Label>
-            <Select value={form.recording_mode} onValueChange={(v) => setForm({ ...form, recording_mode: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Off</SelectItem>
-                <SelectItem value="replay">Browserless session replay</SelectItem>
-                <SelectItem value="video">Self-hosted WebM video</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <RunEvidenceOptions form={form} onChange={setForm} />
           <div className="grid gap-2">
             <Label>Label (optional)</Label>
             <Input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="e.g. nightly batch" />

@@ -15,6 +15,7 @@ async function testOne(base44, site, result, credential) {
       run_id: result.run_id,
       result_id: result.id,
       credential_id: credential.id,
+      screenshot_mode: site.screenshot_mode || 'key_steps',
       recording_mode: result.attempts <= 1 ? (site.recording_mode || undefined) : undefined,
     });
 
@@ -98,7 +99,9 @@ Deno.serve(async (req) => {
     }
 
     // Cap concurrency at 2 to avoid function timeouts with Playwright sessions
-    const concurrency = Math.max(1, Math.min(2, run.concurrency || 2));
+    const concurrency = run.recording_mode && run.recording_mode !== 'none'
+      ? 1
+      : Math.max(1, Math.min(2, run.concurrency || 2));
 
     const queued = await base44.asServiceRole.entities.TestResult.filter(
       { run_id, status: 'queued' },
@@ -154,7 +157,7 @@ Deno.serve(async (req) => {
     const credentials = await Promise.all(claimed.map((r) => base44.asServiceRole.entities.Credential.filter({ id: r.credential_id }).then((rows) => rows[0] || null)));
 
     // Execute tests in parallel (capped at 2)
-    const siteWithRunOptions = { ...site, recording_mode: run.recording_mode || 'none' };
+    const siteWithRunOptions = { ...site, screenshot_mode: run.screenshot_mode || 'key_steps', recording_mode: run.recording_mode || 'none' };
     const outcomes = await Promise.all(claimed.map((r, index) => testOne(base44, siteWithRunOptions, r, credentials[index])));
 
     // Persist results + update run progress incrementally.

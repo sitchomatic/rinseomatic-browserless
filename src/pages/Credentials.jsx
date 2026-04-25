@@ -92,13 +92,14 @@ export default function Credentials() {
   const runDisabledReason = !currentFilterHasCredentials ? "No credentials available" : undefined;
 
   const startRun = async (rawForm) => {
-    const { site_key, concurrency, max_retries, recording_mode, label } = normalizeRunForm(rawForm);
+    const { site_key, concurrency, max_retries, screenshot_mode, recording_mode, label } = normalizeRunForm(rawForm);
     const creds = credentialsForRun(items, selectedItems, site_key);
     if (creds.length === 0) return toast.error("No credentials available");
 
     const run = await base44.entities.TestRun.create({
       label: label || `${creds.length} × ${site_key}`,
       site_key, concurrency, max_retries,
+      screenshot_mode,
       recording_mode,
       recording_dashboard_url: recording_mode === "replay" ? "https://account.browserless.io/" : null,
       status: "queued",

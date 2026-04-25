@@ -52,6 +52,7 @@ function buildBrowserlessUrl(apiKey, site, sessionTimeout, proxyTypeOverride) {
 
 function buildBrowserlessWsUrl(apiKey, site, sessionTimeout, recordingMode, proxyTypeOverride) {
   const params = buildBrowserlessParams(apiKey, site, sessionTimeout, proxyTypeOverride);
+  params.set('headless', 'false');
   if (recordingMode === 'replay') params.set('replay', 'true');
   if (recordingMode === 'video') params.set('record', 'true');
   return `wss://production-sfo.browserless.io?${params.toString()}`;
@@ -80,7 +81,7 @@ async function uploadScreenshot(base44, shot, context) {
 async function saveRecording(base44, result, context) {
   if (!context.run_id || !context.result_id || !result.recording_mode) return;
   let videoUrl = '';
-  if (result.videoBinary) {
+  if (result.videoBinary?.byteLength) {
     const file = new File([result.videoBinary], `${context.run_id}-${context.result_id}.webm`, { type: 'video/webm' });
     const uploaded = await base44.asServiceRole.integrations.Core.UploadFile({ file });
     videoUrl = uploaded.file_url;
@@ -94,7 +95,9 @@ async function saveRecording(base44, result, context) {
     mode: result.recording_mode,
     dashboard_url: result.recording_mode === 'replay' ? 'https://account.browserless.io/session-replay' : '',
     video_url: videoUrl,
-    note: result.recording_mode === 'replay' ? 'Replay is available in the Browserless dashboard after the session finishes.' : '',
+    note: result.recording_mode === 'replay'
+      ? 'Replay is available in the Browserless dashboard after the session finishes.'
+      : (videoUrl ? 'WebM video stored in this app.' : 'Video recording was requested, but Browserless did not return a video file.'),
     captured_at: new Date().toISOString(),
   });
 }
@@ -118,7 +121,13 @@ async function saveEvidence(base44, result, context) {
   }
 }
 
-async function performLoginOnPage(page, site, username, password, recordingMode) {
+function shouldCaptureScreenshot(mode, stepIndex) {
+  if (mode === 'off') return false;
+  if (mode === 'final') return stepIndex === 4;
+  return true;
+}
+
+async function performLoginOnPage(page, site, username, password, recordingMode, screenshotMode = 'key_steps') {
   const waitMs = site.wait_after_submit_ms ?? 3500;
   const successSelector = site.success_selector || DEFAULT_SUCCESS_SELECTOR;
   const userSel = (site.username_selector || '#username').split(',')[0].trim();
@@ -145,8 +154,10 @@ async function performLoginOnPage(page, site, username, password, recordingMode)
   const capture = async (step_label, step_index) => {
     const url = page.url();
     const title = await page.title().catch(() => '');
-    const base64 = await page.screenshot({ encoding: 'base64', fullPage: false }).catch(() => null);
-    debugReport.steps.push({ step_label, step_index, url, title, captured_at: new Date().toISOString() });
+    const base64 = shouldCaptureScreenshot(screenshotMode, step_index)
+      ? await page.screenshot({ encoding: 'base64', fullPage: false }).catch(() => null)
+      : null;
+    debugReport.steps.push({ step_label, step_index, url, title, captured_at: new Date().toISOString(), screenshot: !!base64 });
     if (base64) screenshots.push({ step_label, step_index, base64 });
   };
 
@@ -175,8 +186,9 @@ async function performLoginOnPage(page, site, username, password, recordingMode)
 
   let videoBinary = null;
   if (recordingMode === 'video') {
-    const response = await cdp.send('Browserless.stopRecording');
-    videoBinary = Uint8Array.from(String(response.value || ''), (char) => char.charCodeAt(0));
+    const response = await cdp.send('Browserless.stopRecording').catch(() => null);
+    const value = response?.value || '';
+    videoBinary = value ? Uint8Array.from(String(value), (char) => char.charCodeAt(0) & 255) : null;
   }
   if (recordingMode === 'replay') await cdp.send('Browserless.stopSessionRecording').catch(() => null);
 
@@ -186,17 +198,17 @@ async function performLoginOnPage(page, site, username, password, recordingMode)
   return { finalUrl, markerFound, screenshots, debugReport, recording_mode: recordingMode || '', videoBinary };
 }
 
-async function attemptLoginWithRecording({ browserlessWsUrl, site, username, password, recordingMode }) {
-  const browser = await puppeteer.connect({ browserWSEndpoint: browserlessWsUrl });
+async function attemptLoginWithRecording({ browserlessWsUrl, site, username, password, recordingMode, screenshotMode }) {
+  const browser = await puppeteer.connect({ browserWSEndpoint: browserlessWsUrl, protocolTimeout: 90000 });
   try {
     const page = await browser.newPage();
-    return await performLoginOnPage(page, site, username, password, recordingMode);
+    return await performLoginOnPage(page, site, username, password, recordingMode, screenshotMode);
   } finally {
-    await browser.close();
+    await browser.close().catch(() => null);
   }
 }
 
-async function attemptLogin({ browserlessUrl, site, username, password }) {
+async function attemptLogin({ browserlessUrl, site, username, password, screenshotMode = 'key_steps' }) {
   const waitMs = site.wait_after_submit_ms ?? 3500;
   const successSelector = site.success_selector || DEFAULT_SUCCESS_SELECTOR;
   const userSel = (site.username_selector || '#username').split(',')[0].trim();
@@ -211,6 +223,7 @@ async function attemptLogin({ browserlessUrl, site, username, password }) {
   const userAgent = site.user_agent || '';
   const acceptLang = site.accept_language || '';
 
+  const screenshotModeLiteral = JSON.stringify(screenshotMode);
   const fnBody = `
     export default async ({ page }) => {
       const loginUrl = ${JSON.stringify(site.login_url)};
@@ -233,12 +246,20 @@ async function attemptLogin({ browserlessUrl, site, username, password }) {
       if (acceptLang) await page.setExtraHTTPHeaders({ 'Accept-Language': acceptLang });
 
       const screenshots = [];
-      const debugReport = { steps: [], started_at: new Date().toISOString(), login_url: loginUrl };
+      const screenshotMode = ${screenshotModeLiteral};
+      const shouldCaptureScreenshot = (mode, stepIndex) => {
+        if (mode === 'off') return false;
+        if (mode === 'final') return stepIndex === 4;
+        return true;
+      };
+      const debugReport = { steps: [], started_at: new Date().toISOString(), login_url: loginUrl, screenshot_mode: screenshotMode };
       const capture = async (step_label, step_index) => {
         const url = page.url();
         const title = await page.title().catch(() => '');
-        const base64 = await page.screenshot({ encoding: 'base64', fullPage: false }).catch(() => null);
-        debugReport.steps.push({ step_label, step_index, url, title, captured_at: new Date().toISOString() });
+        const base64 = shouldCaptureScreenshot(screenshotMode, step_index)
+          ? await page.screenshot({ encoding: 'base64', fullPage: false }).catch(() => null)
+          : null;
+        debugReport.steps.push({ step_label, step_index, url, title, captured_at: new Date().toISOString(), screenshot: !!base64 });
         if (base64) screenshots.push({ step_label, step_index, base64 });
       };
 
@@ -296,7 +317,7 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json();
-    const { username, password, site_key, password_variants, custom_login_url, run_id, result_id, credential_id, recording_mode } = body;
+    const { username, password, site_key, password_variants, custom_login_url, run_id, result_id, credential_id, screenshot_mode, recording_mode } = body;
 
     if (!username || !password || !site_key) {
       return Response.json({ error: 'Missing username/password/site_key' }, { status: 400 });
@@ -328,16 +349,17 @@ Deno.serve(async (req) => {
 
     for (const pwd of passwords) {
       const selectedRecordingMode = ['replay', 'video'].includes(recording_mode) ? recording_mode : '';
+      const selectedScreenshotMode = ['off', 'final', 'key_steps'].includes(screenshot_mode) ? screenshot_mode : 'key_steps';
       const browserlessWsUrl = selectedRecordingMode ? buildBrowserlessWsUrl(apiKey, site, sessionTimeout, selectedRecordingMode) : '';
       let r = selectedRecordingMode
-        ? await attemptLoginWithRecording({ browserlessWsUrl, site, username, password: pwd, recordingMode: selectedRecordingMode })
-        : await attemptLogin({ browserlessUrl, site, username, password: pwd });
+        ? await attemptLoginWithRecording({ browserlessWsUrl, site, username, password: pwd, recordingMode: selectedRecordingMode, screenshotMode: selectedScreenshotMode })
+        : await attemptLogin({ browserlessUrl, site, username, password: pwd, screenshotMode: selectedScreenshotMode });
       if (r.error && (site.proxy_type || 'residential') === 'residential') {
         const fallbackUrl = buildBrowserlessUrl(apiKey, site, sessionTimeout, 'none');
         const fallbackWsUrl = selectedRecordingMode ? buildBrowserlessWsUrl(apiKey, site, sessionTimeout, selectedRecordingMode, 'none') : '';
         const fallback = selectedRecordingMode
-          ? await attemptLoginWithRecording({ browserlessWsUrl: fallbackWsUrl, site, username, password: pwd, recordingMode: selectedRecordingMode })
-          : await attemptLogin({ browserlessUrl: fallbackUrl, site, username, password: pwd });
+          ? await attemptLoginWithRecording({ browserlessWsUrl: fallbackWsUrl, site, username, password: pwd, recordingMode: selectedRecordingMode, screenshotMode: selectedScreenshotMode })
+          : await attemptLogin({ browserlessUrl: fallbackUrl, site, username, password: pwd, screenshotMode: selectedScreenshotMode });
         if (!fallback.error) r = { ...fallback, proxy_fallback_used: true };
       }
       if (r.error) {

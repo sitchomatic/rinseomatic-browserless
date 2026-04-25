@@ -27,6 +27,16 @@
       "type": "number",
       "default": 1
     },
+    "screenshot_mode": {
+      "type": "string",
+      "enum": [
+        "off",
+        "final",
+        "key_steps"
+      ],
+      "default": "key_steps",
+      "description": "Screenshot evidence level for this run"
+    },
     "recording_mode": {
       "type": "string",
       "enum": [
