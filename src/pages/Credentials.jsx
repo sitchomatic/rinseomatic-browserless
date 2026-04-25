@@ -29,6 +29,7 @@ export default function Credentials() {
   const [statusFilter, setStatusFilter] = React.useState("all");
   const [selected, setSelected] = React.useState(new Set());
   const [confirmDelete, setConfirmDelete] = React.useState(null);
+  const [testingId, setTestingId] = React.useState(null);
 
   const { data: sites = [], isLoading: sitesLoading } = useQuery({
     queryKey: ["sites"],
@@ -59,6 +60,36 @@ export default function Credentials() {
   const deleteMut = useMutation({
     mutationFn: (id) => base44.entities.Credential.delete(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["credentials"] }),
+  });
+
+  const testMut = useMutation({
+    mutationFn: async (credential) => {
+      setTestingId(credential.id);
+      const response = await base44.functions.invoke("testCredential", {
+        username: credential.username,
+        password: credential.password,
+        password_variants: credential.password_variants || [],
+        site_key: credential.site_key,
+        custom_login_url: credential.custom_login_url || "",
+        credential_id: credential.id,
+        screenshot_mode: "final",
+        recording_mode: "none",
+      });
+      const status = response.data?.status || "error";
+      await base44.entities.Credential.update(credential.id, {
+        status,
+        last_tested: new Date().toISOString(),
+        attempts: Number(credential.attempts || 0) + 1,
+        last_result_note: response.data?.error_message || response.data?.final_url || "Manual test completed",
+      });
+      return response.data;
+    },
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["credentials"] });
+      toast.success(`Credential test ${result?.status || "completed"}`);
+    },
+    onError: (error) => toast.error(error?.response?.data?.error_message || error?.response?.data?.error || error.message || "Credential test failed"),
+    onSettled: () => setTestingId(null),
   });
 
   const {
@@ -208,6 +239,8 @@ export default function Credentials() {
           onToggleAll={toggleAll}
           onDelete={(c) => setConfirmDelete(c)}
           onEdit={(c) => { setEditingCredential(c); setAddOpen(true); }}
+          onTest={(c) => testMut.mutate(c)}
+          testingId={testingId}
         />
       )}
 
