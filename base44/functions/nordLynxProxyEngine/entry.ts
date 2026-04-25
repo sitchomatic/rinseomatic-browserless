@@ -29,16 +29,15 @@ async function nordFetch(path, { token, retries = 2 } = {}) {
           },
         });
 
-        if ((response.status === 401 || response.status === 403) && authHeader !== authHeaders[authHeaders.length - 1]) {
-          break;
-        }
-
-        if (response.status === 401 || response.status === 403) {
-          return { ok: false, status: response.status, error: 'NordVPN access token expired or unauthorized' };
-        }
-
         if (!response.ok) {
           const body = await response.text();
+          const canTryNextAuth = authHeader !== authHeaders[authHeaders.length - 1] && (
+            response.status === 400 || response.status === 401 || response.status === 403
+          );
+          if (canTryNextAuth) break;
+          if (response.status === 401 || response.status === 403) {
+            return { ok: false, status: response.status, error: 'NordVPN access token expired or unauthorized' };
+          }
           if (RETRY_STATUSES.has(response.status) && attempt < retries) {
             await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
             continue;
