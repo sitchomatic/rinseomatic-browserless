@@ -55,6 +55,7 @@ Deno.serve(async (req) => {
     const { run_id } = await req.json();
     runIdForCleanup = run_id;
     if (!run_id) return Response.json({ error: 'Missing run_id' }, { status: 400 });
+    if (run_id === '__missing__') return Response.json({ error: 'Invalid run_id' }, { status: 400 });
 
     let runs = [];
     try {
