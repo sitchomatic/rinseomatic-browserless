@@ -78,11 +78,10 @@ export default function RunDetail() {
   });
 
   const summary = React.useMemo(() => summarizeResults(results), [results]);
-  const progress = React.useMemo(() => runProgress(run, results), [run, results]);
-  const pendingResults = React.useMemo(() => results.filter((r) => r.status === "queued" || r.status === "running"), [results]);
+  const progress = React.useMemo(() => runProgress(run, summary), [run, summary]);
   const filtered = React.useMemo(
-    () => tab === "all" ? results : tab === "queued" ? pendingResults : results.filter((r) => r.status === tab),
-    [tab, results, pendingResults]
+    () => tab === "all" ? results : results.filter((r) => tab === "queued" ? r.status === "queued" || r.status === "running" : r.status === tab),
+    [tab, results]
   );
 
   if (runLoading) {

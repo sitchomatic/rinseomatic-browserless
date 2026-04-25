@@ -26,6 +26,7 @@ async function testOne(base44, site, result) {
       working_password: data.working_password,
       proxy_fallback_used: !!data.proxy_fallback_used,
       elapsed_ms: data.elapsed_ms ?? (Date.now() - started),
+      credential,
     };
   } catch (e) {
     const responseData = e?.response?.data;
@@ -154,18 +155,18 @@ Deno.serve(async (req) => {
       // Mirror terminal result back to the Credential record
       if (!shouldRetry && (o.status === 'working' || o.status === 'failed' || o.status === 'error')) {
         try {
-          const existing = await base44.asServiceRole.entities.Credential.filter({ id: r.credential_id });
-          if (existing[0]) {
+          const existing = o.credential;
+          if (existing) {
             const update = {
               status: o.status === 'working' ? 'working' : o.status === 'failed' ? 'failed' : 'error',
               last_tested: new Date().toISOString(),
               last_result_note: o.error_message || (o.working_password ? `variant matched → ${o.final_url || ''}` : (o.final_url ? `→ ${o.final_url}` : null)),
-              attempts: (existing[0].attempts || 0) + 1,
+              attempts: (existing.attempts || 0) + 1,
             };
             // If a variant password worked, promote it to primary
-            if (o.working_password && o.working_password !== existing[0].password) {
-              const oldPrimary = existing[0].password;
-              const variants = (existing[0].password_variants || []).filter((p) => p && p !== o.working_password);
+            if (o.working_password && o.working_password !== existing.password) {
+              const oldPrimary = existing.password;
+              const variants = (existing.password_variants || []).filter((p) => p && p !== o.working_password);
               if (oldPrimary && !variants.includes(oldPrimary)) variants.push(oldPrimary);
               update.password = o.working_password;
               update.password_variants = variants;

@@ -20,13 +20,12 @@ export function summarizeResults(results = []) {
   });
 }
 
-export function runProgress(run, results = []) {
-  const total = run?.total_count || results.length || 0;
-  const pending = typeof run?.pending_count === "number"
-    ? run.pending_count
-    : summarizeResults(results).pending;
-  const done = Math.max(0, total - pending);
-  const percent = total ? Math.round((done / total) * 100) : 0;
+export function runProgress(run, summaryOrResults = []) {
+  const summary = Array.isArray(summaryOrResults) ? summarizeResults(summaryOrResults) : summaryOrResults;
+  const total = run?.total_count || summary.total || 0;
+  const pending = typeof run?.pending_count === "number" ? run.pending_count : summary.pending || 0;
+  const done = Math.max(0, Math.min(total, total - pending));
+  const percent = total ? Math.min(100, Math.round((done / total) * 100)) : 0;
 
   return { total, pending, done, percent };
 }
