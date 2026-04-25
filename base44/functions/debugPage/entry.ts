@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
         const title = await page.title();
         const bodySnippet = await page.evaluate(() => document.body.innerText.substring(0, 500));
 
-        return { data: { finalUrl, title, inputs, iframes, bodySnippet } };
+        return { data: { finalUrl, title, inputs, iframes, bodySnippet }, type: 'application/json' };
       };
     `;
 

@@ -112,7 +112,7 @@ async function attemptLogin({ browserlessUrl, site, username, password }) {
         return rect.width > 0 && rect.height > 0;
       }, successSel);
 
-      return { data: { finalUrl, markerFound } };
+      return { data: { finalUrl, markerFound }, type: 'application/json' };
     };
   `;
 
@@ -158,7 +158,7 @@ Deno.serve(async (req) => {
     const apiKey = Deno.env.get('BROWSERLESS_API_KEY');
     if (!apiKey) return Response.json({ error: 'BROWSERLESS_API_KEY not set' }, { status: 500 });
 
-    const sessionTimeout = (site.wait_after_submit_ms || 3500) + (site.navigation_timeout_ms || 30000) + 20000;
+    const sessionTimeout = 60000;
     const browserlessUrl = buildBrowserlessUrl(apiKey, site, sessionTimeout);
 
     // Try primary password, then variants until one works
