@@ -330,12 +330,25 @@ async function attemptLogin({ browserlessUrl, site, username, password, screensh
   return { finalUrl: finalUrl || '', markerFound: !!markerFound, screenshots: screenshots || [], debugReport: debugReport || {} };
 }
 
+async function trace(base44, sessionId, message, level = 'debug', site = 'credential-test') {
+  await base44.asServiceRole.entities.ActionLog.create({
+    session_id: sessionId || 'test-credential',
+    level,
+    category: 'auth',
+    message: String(message).slice(0, 1200),
+    delta_ms: 0,
+    timestamp: new Date().toISOString(),
+    site,
+  }).catch(() => {});
+}
+
 Deno.serve(async (req) => {
   const started = Date.now();
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json();
     const { username, password, site_key, password_variants, custom_login_url, run_id, result_id, credential_id, screenshot_mode, recording_mode } = body;
+    await trace(base44, run_id || result_id, `CMD testCredential start · site=${site_key || 'missing'} · username=${username || 'missing'} · variants=${(password_variants || []).length} · screenshots=${screenshot_mode || 'default'} · recording=${recording_mode || 'none'}`, 'debug', site_key || 'credential-test');
 
     if (!username || !password || !site_key) {
       return Response.json({ error: 'Missing username/password/site_key' }, { status: 400 });
@@ -345,6 +358,8 @@ Deno.serve(async (req) => {
     let site = sites[0];
     if (!site) return Response.json({ error: `Unknown site: ${site_key}` }, { status: 404 });
     if (site.enabled === false) return Response.json({ error: `Site ${site_key} is disabled` }, { status: 400 });
+
+    await trace(base44, run_id || result_id, `CMD testCredential loaded site · login_url=${site.login_url} · proxy=${site.proxy_type || 'none'}:${site.proxy_country || 'any'}`, 'debug', site_key);
 
     if (custom_login_url) {
       if (!/^https?:\/\//i.test(custom_login_url)) return Response.json({ error: 'Custom login URL must be a valid http(s) URL' }, { status: 400 });
@@ -366,6 +381,7 @@ Deno.serve(async (req) => {
     let workingPassword = null;
 
     for (const pwd of passwords) {
+      await trace(base44, run_id || result_id, `CMD testCredential attempt · password_index=${passwords.indexOf(pwd) + 1}/${passwords.length} · browserless=${recording_mode ? 'websocket' : 'function'}`, 'debug', site_key);
       const selectedRecordingMode = ['replay', 'video'].includes(recording_mode) ? recording_mode : '';
       const selectedScreenshotMode = ['off', 'final', 'failures', 'key_steps'].includes(screenshot_mode) ? screenshot_mode : 'key_steps';
       const browserlessWsUrl = selectedRecordingMode ? buildBrowserlessWsUrl(apiKey, site, sessionTimeout, selectedRecordingMode) : '';
@@ -373,6 +389,7 @@ Deno.serve(async (req) => {
         ? await attemptLoginWithRecording({ browserlessWsUrl, site, username, password: pwd, recordingMode: selectedRecordingMode, screenshotMode: selectedScreenshotMode })
         : await attemptLogin({ browserlessUrl, site, username, password: pwd, screenshotMode: selectedScreenshotMode });
       if (r.error && (site.proxy_type || 'residential') === 'residential') {
+        await trace(base44, run_id || result_id, `CMD testCredential primary proxy failed · retrying without proxy · error=${r.error}`, 'warn', site_key);
         const fallbackUrl = buildBrowserlessUrl(apiKey, site, sessionTimeout, 'none');
         const fallbackWsUrl = selectedRecordingMode ? buildBrowserlessWsUrl(apiKey, site, sessionTimeout, selectedRecordingMode, 'none') : '';
         const fallback = selectedRecordingMode
@@ -385,12 +402,15 @@ Deno.serve(async (req) => {
       }
       const status = classify(site, r.finalUrl, r.markerFound);
       lastResult = { ...r, status };
+      await trace(base44, run_id || result_id, `CMD testCredential response · status=${status} · marker=${!!r.markerFound} · final_url=${r.finalUrl || ''} · elapsed=${Date.now() - started}ms`, status === 'working' ? 'success' : 'warn', site_key);
       await saveEvidence(base44, lastResult, { run_id, result_id, credential_id, username, site_key, recording_dashboard_url: body.recording_dashboard_url });
       if (status === 'working') {
         workingPassword = pwd;
         break;
       }
     }
+
+    await trace(base44, run_id || result_id, `CMD testCredential complete · status=${lastResult.status} · tried=${passwords.length} · elapsed=${Date.now() - started}ms`, lastResult.status === 'working' ? 'success' : 'warn', site_key);
 
     return Response.json({
       status: lastResult.status,

@@ -130,6 +130,18 @@ function buildWireGuardConfig({ privateKey, server }) {
   ].join('\n');
 }
 
+async function trace(base44, message, level = 'debug') {
+  await base44.asServiceRole.entities.ActionLog.create({
+    session_id: 'nordlynx-proxy-engine',
+    level,
+    category: 'proxy',
+    message: String(message).slice(0, 1200),
+    delta_ms: 0,
+    timestamp: new Date().toISOString(),
+    site: 'nordlynx',
+  }).catch(() => {});
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -143,11 +155,14 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const preferredCountry = body.country || body.country_code || 'US';
+    await trace(base44, `CMD nordLynxProxyEngine start · country=${preferredCountry}`);
 
+    await trace(base44, 'CMD nordLynxProxyEngine request · Nord credentials');
     const credentialsResponse = await nordFetch('/v1/users/services/credentials', { token });
     if (!credentialsResponse.ok) return Response.json({ error: credentialsResponse.error }, { status: credentialsResponse.status || 502 });
     const credentials = extractCredentials(credentialsResponse.data);
 
+    await trace(base44, 'CMD nordLynxProxyEngine request · Nord countries');
     const countriesResponse = await nordFetch('/v1/servers/countries', { token: null });
     if (!countriesResponse.ok) return Response.json({ error: countriesResponse.error }, { status: countriesResponse.status || 502 });
     const countryId = resolveCountryId(countriesResponse.data, preferredCountry);
@@ -159,6 +174,7 @@ Deno.serve(async (req) => {
         ...(countryId ? { country_id: countryId } : {}),
       }),
     });
+    await trace(base44, `CMD nordLynxProxyEngine request · server recommendations · country_id=${countryId || 'any'}`);
     const serversResponse = await nordFetch(`/v1/servers/recommendations?${params.toString()}`, { token: null });
     if (!serversResponse.ok) return Response.json({ error: serversResponse.error }, { status: serversResponse.status || 502 });
 
@@ -169,6 +185,8 @@ Deno.serve(async (req) => {
       privateKey: credentials.nordlynx_private_key,
       server: bestServer,
     });
+
+    await trace(base44, `CMD nordLynxProxyEngine response · server=${bestServer.hostname || bestServer.name} · load=${bestServer.load}`, 'success');
 
     return Response.json({
       north_star: 'Headless-ready NordLynx IP management via SOCKS5 handoff',

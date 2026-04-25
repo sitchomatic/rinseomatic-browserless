@@ -65,6 +65,18 @@ async function checkNord(token, country) {
   };
 }
 
+async function trace(base44, message, level = 'debug') {
+  await base44.asServiceRole.entities.ActionLog.create({
+    session_id: 'network-diagnostics',
+    level,
+    category: 'network',
+    message: String(message).slice(0, 1200),
+    delta_ms: 0,
+    timestamp: new Date().toISOString(),
+    site: 'network',
+  }).catch(() => {});
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -74,14 +86,18 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const shouldRepair = body.repair !== false;
     const country = body.country || 'AU';
+    await trace(base44, `CMD networkDiagnostics start · repair=${shouldRepair} · country=${country}`);
 
     const sites = await base44.asServiceRole.entities.Site.list('-created_date', 100);
     const repairs = [];
+
+    await trace(base44, `CMD networkDiagnostics loaded sites · count=${sites.length}`);
 
     if (shouldRepair) {
       for (const site of sites) {
         const patch = sitePatch(site);
         if (Object.keys(patch).length > 0) {
+          await trace(base44, `CMD networkDiagnostics repair site · site=${site.key} · fields=${Object.keys(patch).join(',')}`, 'warn');
           await base44.asServiceRole.entities.Site.update(site.id, patch);
           repairs.push({ site_key: site.key, fields: Object.keys(patch) });
         }
@@ -100,6 +116,7 @@ Deno.serve(async (req) => {
       locale: site.accept_language || 'unset',
     }));
 
+    await trace(base44, 'CMD networkDiagnostics external checks start · browserless+nordlynx');
     const [browserless, nordlynx] = await Promise.all([
       checkBrowserless(Deno.env.get('BROWSERLESS_API_KEY')),
       checkNord(Deno.env.get('NORDVPN_ACCESS_TOKEN'), country),
@@ -108,8 +125,11 @@ Deno.serve(async (req) => {
     const checks = [browserless, nordlynx, ...siteChecks.map((site) => ({ ok: site.ok, label: `${site.label} AU proxy defaults`, detail: `${site.proxy} · ${site.locale}` }))];
     const okCount = checks.filter((check) => check.ok).length;
 
+    const status = okCount === checks.length ? 'healthy' : repairs.length > 0 ? 'healed' : 'attention';
+    await trace(base44, `CMD networkDiagnostics response · status=${status} · healthy=${okCount}/${checks.length} · repairs=${repairs.length}`, status === 'healthy' ? 'success' : 'warn');
+
     return Response.json({
-      status: okCount === checks.length ? 'healthy' : repairs.length > 0 ? 'healed' : 'attention',
+      status,
       checked_at: new Date().toISOString(),
       summary: `${okCount}/${checks.length} checks healthy`,
       checks,

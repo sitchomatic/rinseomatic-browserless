@@ -4,39 +4,86 @@ import { base44 } from "@/api/base44Client";
 const SENSITIVE_KEYS = /password|token|secret|key|authorization|cookie|credential/i;
 
 export default function NetworkTerminalTracker() {
+  const loggingRef = React.useRef(false);
+
   React.useEffect(() => {
     const originalFetch = window.fetch;
+    const OriginalXHR = window.XMLHttpRequest;
+
+    const safeWrite = (message, category, level) => {
+      if (loggingRef.current) return;
+      loggingRef.current = true;
+      writeTerminal(message, category, level).finally(() => {
+        loggingRef.current = false;
+      });
+    };
 
     window.fetch = async (input, init = {}) => {
+      if (loggingRef.current) return originalFetch(input, init);
       const started = Date.now();
       const url = typeof input === "string" ? input : input?.url || "unknown";
+      if (shouldSkipUrl(url)) return originalFetch(input, init);
       const method = init?.method || (typeof input !== "string" ? input?.method : null) || "GET";
-      writeTerminal(`HTTP → ${method.toUpperCase()} ${shortUrl(url)} ${summarizeBody(init?.body)}`, "network", "debug");
+      safeWrite(`HTTP → ${method.toUpperCase()} ${shortUrl(url)} ${summarizeBody(init?.body)}`, "network", "debug");
 
       try {
         const response = await originalFetch(input, init);
-        writeTerminal(`HTTP ← ${response.status} ${method.toUpperCase()} ${shortUrl(url)} · ${Date.now() - started}ms`, "network", response.ok ? "success" : "warn");
+        const body = await response.clone().text().catch(() => "");
+        safeWrite(`HTTP ← ${response.status} ${method.toUpperCase()} ${shortUrl(url)} · ${Date.now() - started}ms ${body ? `· response=${redact(body).slice(0, 360)}` : ""}`, "network", response.ok ? "success" : "warn");
         return response;
       } catch (error) {
-        writeTerminal(`HTTP × ${method.toUpperCase()} ${shortUrl(url)} · ${error.message}`, "network", "error");
+        safeWrite(`HTTP × ${method.toUpperCase()} ${shortUrl(url)} · ${error.message}`, "network", "error");
         throw error;
       }
     };
 
+    window.XMLHttpRequest = function TracedXMLHttpRequest() {
+      const xhr = new OriginalXHR();
+      let method = "GET";
+      let url = "unknown";
+      let started = 0;
+      const originalOpen = xhr.open;
+      const originalSend = xhr.send;
+
+      xhr.open = function tracedOpen(nextMethod, nextUrl, ...args) {
+        method = String(nextMethod || "GET").toUpperCase();
+        url = String(nextUrl || "unknown");
+        return originalOpen.call(xhr, nextMethod, nextUrl, ...args);
+      };
+
+      xhr.send = function tracedSend(body) {
+        if (shouldSkipUrl(url)) return originalSend.call(xhr, body);
+        started = Date.now();
+        safeWrite(`XHR → ${method} ${shortUrl(url)} ${summarizeBody(body)}`, "network", "debug");
+        xhr.addEventListener("loadend", () => {
+          safeWrite(`XHR ← ${xhr.status} ${method} ${shortUrl(url)} · ${Date.now() - started}ms ${xhr.responseText ? `· response=${redact(xhr.responseText).slice(0, 360)}` : ""}`, "network", xhr.status >= 200 && xhr.status < 400 ? "success" : "warn");
+        });
+        return originalSend.call(xhr, body);
+      };
+
+      return xhr;
+    };
+
     return () => {
       window.fetch = originalFetch;
+      window.XMLHttpRequest = OriginalXHR;
     };
   }, []);
 
   return null;
 }
 
+function shouldSkipUrl(url) {
+  const text = String(url || "");
+  return text.includes("ActionLog") || text.includes("logAuditEvent") || text.includes("terminal-network");
+}
+
 function writeTerminal(message, category, level) {
-  base44.entities.ActionLog.create({
+  return base44.entities.ActionLog.create({
     session_id: "terminal-network",
     level,
     category,
-    message: message.slice(0, 900),
+    message: message.slice(0, 1200),
     delta_ms: 0,
     timestamp: new Date().toISOString(),
     site: window.location.pathname,

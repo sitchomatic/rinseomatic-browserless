@@ -77,8 +77,9 @@ function TerminalLine({ log }) {
 }
 
 function getDirection(message = "") {
-  if (message.startsWith("HTTP →")) return { symbol: "→", color: "text-sky-300" };
-  if (message.startsWith("HTTP ←")) return { symbol: "←", color: "text-emerald-300" };
-  if (message.startsWith("HTTP ×")) return { symbol: "×", color: "text-rose-300" };
+  if (message.startsWith("HTTP →") || message.startsWith("XHR →")) return { symbol: "→", color: "text-sky-300" };
+  if (message.startsWith("HTTP ←") || message.startsWith("XHR ←")) return { symbol: "←", color: "text-emerald-300" };
+  if (message.startsWith("HTTP ×") || message.startsWith("XHR ×")) return { symbol: "×", color: "text-rose-300" };
+  if (message.startsWith("CMD ")) return { symbol: "❯", color: "text-amber-300" };
   return { symbol: "$", color: "text-amber-300" };
 }

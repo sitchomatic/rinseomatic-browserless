@@ -41,6 +41,18 @@ async function testOne(base44, site, result, credential) {
   }
 }
 
+async function trace(base44, sessionId, message, level = 'debug', site = 'worker') {
+  await base44.asServiceRole.entities.ActionLog.create({
+    session_id: sessionId || 'run-worker',
+    level,
+    category: 'system',
+    message: String(message).slice(0, 1200),
+    delta_ms: 0,
+    timestamp: new Date().toISOString(),
+    site,
+  }).catch(() => {});
+}
+
 Deno.serve(async (req) => {
   let runIdForCleanup = null;
   let base44ForCleanup = null;
@@ -54,6 +66,7 @@ Deno.serve(async (req) => {
 
     const { run_id } = await req.json();
     runIdForCleanup = run_id;
+    await trace(base44, run_id, `CMD runWorker start · run_id=${run_id || 'missing'}`);
     if (!run_id) return Response.json({ error: 'Missing run_id' }, { status: 400 });
     if (run_id === '__missing__') return Response.json({ error: 'Invalid run_id' }, { status: 400 });
 
@@ -65,6 +78,7 @@ Deno.serve(async (req) => {
     }
     let run = runs[0];
     if (!run) return Response.json({ error: 'Run not found' }, { status: 404 });
+    await trace(base44, run_id, `CMD runWorker loaded run · status=${run.status} · site=${run.site_key} · pending=${run.pending_count || 0}`, 'debug', run.site_key);
     if (user && user.role !== 'admin' && run.created_by !== user.email) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -79,6 +93,7 @@ Deno.serve(async (req) => {
     if (run.worker_id && lockAgeMs < 2 * 60 * 1000) {
       return Response.json({ done: false, skipped: true, reason: 'Run is already being processed' });
     }
+    await trace(base44, run_id, `CMD runWorker acquiring lock · worker=${workerId}`, 'debug', run.site_key);
     await base44.asServiceRole.entities.TestRun.update(run_id, { worker_id: workerId, claimed_at: claimTime });
     run = (await base44.asServiceRole.entities.TestRun.filter({ id: run_id }))[0];
     if (run.worker_id !== workerId) {
@@ -114,6 +129,8 @@ Deno.serve(async (req) => {
       'created_date',
       concurrency
     );
+
+    await trace(base44, run_id, `CMD runWorker selected batch · queued=${queued.length} · concurrency=${concurrency}`, 'debug', run.site_key);
 
     if (queued.length === 0) {
       const all = await base44.asServiceRole.entities.TestResult.filter({ run_id }, '-created_date', 5000);
@@ -164,7 +181,9 @@ Deno.serve(async (req) => {
 
     // Execute tests in parallel (capped at 2, or 1 when WebSocket recording is enabled)
     const siteWithRunOptions = { ...site, screenshot_mode: run.screenshot_mode || 'key_steps', recording_mode: run.recording_mode || 'none' };
+    await trace(base44, run_id, `CMD runWorker executing browser tests · claimed=${claimed.length}`, 'debug', run.site_key);
     const outcomes = await Promise.all(claimed.map((r, index) => testOne(base44, siteWithRunOptions, r, credentials[index])));
+    await trace(base44, run_id, `CMD runWorker browser tests returned · statuses=${outcomes.map((o) => o.status).join(',')}`, 'debug', run.site_key);
 
     // Persist results + update run progress incrementally.
     const maxRetries = run.max_retries ?? 1;
@@ -247,6 +266,7 @@ Deno.serve(async (req) => {
       claimed_at: null,
     });
 
+    await trace(base44, run_id, `CMD runWorker response · done=${isDone} · processed=${claimed.length} · pending=${pendingCount}`, isDone ? 'success' : 'debug', run.site_key);
     return Response.json({ done: isDone, processed: claimed.length });
   } catch (error) {
     if (runIdForCleanup && base44ForCleanup) {
