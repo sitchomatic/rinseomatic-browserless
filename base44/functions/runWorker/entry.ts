@@ -16,7 +16,7 @@ async function testOne(base44, site, result, credential) {
       result_id: result.id,
       credential_id: credential.id,
       screenshot_mode: site.screenshot_mode || 'key_steps',
-      recording_mode: result.attempts <= 1 ? (site.recording_mode || undefined) : undefined,
+      recording_mode: (result.attempts || 0) <= 1 ? (site.recording_mode || undefined) : undefined,
     });
 
     const data = res?.data || res;
@@ -56,7 +56,12 @@ Deno.serve(async (req) => {
     runIdForCleanup = run_id;
     if (!run_id) return Response.json({ error: 'Missing run_id' }, { status: 400 });
 
-    const runs = await base44.asServiceRole.entities.TestRun.filter({ id: run_id });
+    let runs = [];
+    try {
+      runs = await base44.asServiceRole.entities.TestRun.filter({ id: run_id });
+    } catch (_) {
+      return Response.json({ error: 'Run not found' }, { status: 404 });
+    }
     let run = runs[0];
     if (!run) return Response.json({ error: 'Run not found' }, { status: 404 });
     if (user && user.role !== 'admin' && run.created_by !== user.email) {
@@ -156,7 +161,7 @@ Deno.serve(async (req) => {
     const claimed = await base44.asServiceRole.entities.TestResult.filter({ run_id, status: 'running', worker_id: workerId }, 'created_date', concurrency);
     const credentials = await Promise.all(claimed.map((r) => base44.asServiceRole.entities.Credential.filter({ id: r.credential_id }).then((rows) => rows[0] || null)));
 
-    // Execute tests in parallel (capped at 2)
+    // Execute tests in parallel (capped at 2, or 1 when WebSocket recording is enabled)
     const siteWithRunOptions = { ...site, screenshot_mode: run.screenshot_mode || 'key_steps', recording_mode: run.recording_mode || 'none' };
     const outcomes = await Promise.all(claimed.map((r, index) => testOne(base44, siteWithRunOptions, r, credentials[index])));
 
@@ -244,7 +249,12 @@ Deno.serve(async (req) => {
     return Response.json({ done: isDone, processed: claimed.length });
   } catch (error) {
     if (runIdForCleanup && base44ForCleanup) {
-      await base44ForCleanup.asServiceRole.entities.TestRun.update(runIdForCleanup, { worker_id: null, claimed_at: null });
+      try {
+        const cleanupRuns = await base44ForCleanup.asServiceRole.entities.TestRun.filter({ id: runIdForCleanup });
+        if (cleanupRuns[0]) {
+          await base44ForCleanup.asServiceRole.entities.TestRun.update(runIdForCleanup, { worker_id: null, claimed_at: null });
+        }
+      } catch (_) {}
     }
     return Response.json({ error: error.message }, { status: 500 });
   }

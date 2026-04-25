@@ -93,7 +93,7 @@ async function saveRecording(base44, result, context) {
     username: context.username,
     site: context.site_key,
     mode: result.recording_mode,
-    dashboard_url: result.recording_mode === 'replay' ? 'https://account.browserless.io/session-replay' : '',
+    dashboard_url: result.recording_mode === 'replay' ? (context.recording_dashboard_url || 'https://account.browserless.io/session-replay') : '',
     video_url: videoUrl,
     note: result.recording_mode === 'replay'
       ? 'Replay is available in the Browserless dashboard after the session finishes.'
@@ -175,7 +175,7 @@ async function performLoginOnPage(page, site, username, password, recordingMode,
     const base64 = shouldCaptureScreenshot(screenshotMode, step_index)
       ? await page.screenshot({ encoding: 'base64', fullPage: false }).catch(() => null)
       : null;
-    debugReport.steps.push({ step_label, step_index, url, title, captured_at: new Date().toISOString(), screenshot: !!base64 });
+    debugReport.steps.push({ step_label, step_index, url, title, captured_at: new Date().toISOString(), screenshot: !!base64, screenshot_mode: screenshotMode });
     if (base64) screenshots.push({ step_label, step_index, base64 });
   };
 
@@ -277,7 +277,7 @@ async function attemptLogin({ browserlessUrl, site, username, password, screensh
         const base64 = shouldCaptureScreenshot(screenshotMode, step_index)
           ? await page.screenshot({ encoding: 'base64', fullPage: false }).catch(() => null)
           : null;
-        debugReport.steps.push({ step_label, step_index, url, title, captured_at: new Date().toISOString(), screenshot: !!base64 });
+        debugReport.steps.push({ step_label, step_index, url, title, captured_at: new Date().toISOString(), screenshot: !!base64, screenshot_mode: screenshotMode });
         if (base64) screenshots.push({ step_label, step_index, base64 });
       };
 
@@ -385,7 +385,7 @@ Deno.serve(async (req) => {
       }
       const status = classify(site, r.finalUrl, r.markerFound);
       lastResult = { ...r, status };
-      await saveEvidence(base44, lastResult, { run_id, result_id, credential_id, username, site_key });
+      await saveEvidence(base44, lastResult, { run_id, result_id, credential_id, username, site_key, recording_dashboard_url: body.recording_dashboard_url });
       if (status === 'working') {
         workingPassword = pwd;
         break;
