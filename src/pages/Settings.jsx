@@ -11,6 +11,8 @@ import ProxyInventoryPanel from "@/components/settings/ProxyInventoryPanel";
 import ProxyPoolPanel from "@/components/settings/ProxyPoolPanel";
 import SchedulePanel from "@/components/settings/SchedulePanel";
 import RepairSuggestionsPanel from "@/components/settings/RepairSuggestionsPanel";
+import NordLynxBridgePanel from "@/components/settings/NordLynxBridgePanel";
+import DebugPagePanel from "@/components/settings/DebugPagePanel";
 import { Trash2, Sparkles, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -79,6 +81,8 @@ export default function Settings() {
         <PreferencesPanel />
         <ProxyInventoryPanel />
         <ProxyPoolPanel />
+        <NordLynxBridgePanel />
+        <DebugPagePanel />
         <SchedulePanel />
         <RepairSuggestionsPanel />
       </div>
