@@ -6,6 +6,7 @@ import PageHeader from "@/components/shared/PageHeader";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import SiteFormPanel, { BLANK_SITE } from "@/components/settings/SiteFormPanel";
 import PreferencesPanel from "@/components/settings/PreferencesPanel";
+import NetworkDiagnosticsPanel from "@/components/network/NetworkDiagnosticsPanel";
 import { Trash2, Sparkles, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -69,7 +70,8 @@ export default function Settings() {
         }
       />
 
-      <div className="mb-6">
+      <div className="mb-6 space-y-6">
+        <NetworkDiagnosticsPanel />
         <PreferencesPanel />
       </div>
 

@@ -9,6 +9,7 @@ import PageHeader from "@/components/shared/PageHeader";
 import StatusPill from "@/components/shared/StatusPill";
 import SiteChip from "@/components/shared/SiteChip";
 import ResultsTable from "@/components/runs/ResultsTable";
+import NetworkDiagnosticsPanel from "@/components/network/NetworkDiagnosticsPanel";
 import { formatMs } from "@/lib/sites";
 import { runProgress, summarizeResults } from "@/lib/runMetrics";
 import { toast } from "sonner";
@@ -167,6 +168,8 @@ export default function RunDetail() {
         <Tile label="Errored" icon={AlertTriangle} accent="text-amber-300" value={summary.error} />
         <Tile label="Elapsed" value={formatMs(run.elapsed_ms)} sub={run.status} />
       </div>
+
+      <NetworkDiagnosticsPanel compact className="mb-6" />
 
       <div className="h-1.5 bg-secondary rounded-full overflow-hidden mb-6">
         <div className="h-full bg-primary transition-all" style={{ width: `${progress.percent}%` }} />

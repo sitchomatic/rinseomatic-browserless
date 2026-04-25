@@ -8,6 +8,7 @@ import { formatMs } from "@/lib/sites";
 import { buildDashboardMetrics } from "@/lib/dashboardMetrics";
 import MaintenanceStatusBadge from "@/components/dashboard/MaintenanceStatusBadge";
 import DashboardVisualSummary from "@/components/dashboard/DashboardVisualSummary";
+import NetworkDiagnosticsPanel from "@/components/network/NetworkDiagnosticsPanel";
 import { Button } from "@/components/ui/button";
 import { runInBatches } from "@/lib/batches";
 import { toast } from "sonner";
@@ -111,6 +112,8 @@ export default function Dashboard() {
         <SummaryTile label="Working" value={totals.working} icon={CheckCircle2} accent="text-emerald-300" />
         <SummaryTile label="Failed / Error" value={totals.failed} icon={XCircle} accent="text-rose-300" />
       </div>
+
+      <NetworkDiagnosticsPanel />
 
       <DashboardVisualSummary totals={totals} siteStats={siteStats} activeRuns={activeRuns} />
 
