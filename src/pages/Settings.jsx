@@ -7,6 +7,10 @@ import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import SiteFormPanel, { BLANK_SITE } from "@/components/settings/SiteFormPanel";
 import PreferencesPanel from "@/components/settings/PreferencesPanel";
 import NetworkDiagnosticsPanel from "@/components/network/NetworkDiagnosticsPanel";
+import ProxyInventoryPanel from "@/components/settings/ProxyInventoryPanel";
+import ProxyPoolPanel from "@/components/settings/ProxyPoolPanel";
+import SchedulePanel from "@/components/settings/SchedulePanel";
+import RepairSuggestionsPanel from "@/components/settings/RepairSuggestionsPanel";
 import { Trash2, Sparkles, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -73,6 +77,10 @@ export default function Settings() {
       <div className="mb-6 space-y-6">
         <NetworkDiagnosticsPanel />
         <PreferencesPanel />
+        <ProxyInventoryPanel />
+        <ProxyPoolPanel />
+        <SchedulePanel />
+        <RepairSuggestionsPanel />
       </div>
 
       <div className="grid lg:grid-cols-[1fr_440px] gap-6">
