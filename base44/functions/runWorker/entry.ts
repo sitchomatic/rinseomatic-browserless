@@ -15,6 +15,7 @@ async function testOne(base44, site, result, credential) {
       run_id: result.run_id,
       result_id: result.id,
       credential_id: credential.id,
+      recording_mode: result.attempts <= 1 ? (site.recording_mode || undefined) : undefined,
     });
 
     const data = res?.data || res;
@@ -153,7 +154,8 @@ Deno.serve(async (req) => {
     const credentials = await Promise.all(claimed.map((r) => base44.asServiceRole.entities.Credential.filter({ id: r.credential_id }).then((rows) => rows[0] || null)));
 
     // Execute tests in parallel (capped at 2)
-    const outcomes = await Promise.all(claimed.map((r, index) => testOne(base44, site, r, credentials[index])));
+    const siteWithRunOptions = { ...site, recording_mode: run.recording_mode || 'none' };
+    const outcomes = await Promise.all(claimed.map((r, index) => testOne(base44, siteWithRunOptions, r, credentials[index])));
 
     // Persist results + update run progress incrementally.
     const maxRetries = run.max_retries ?? 1;

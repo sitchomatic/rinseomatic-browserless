@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import puppeteer from 'npm:puppeteer-core@24.0.0';
 
 const DEFAULT_SUCCESS_SELECTOR = '.ol-alert__content.ol-alert__content--status_success';
 
@@ -12,12 +13,11 @@ function classify(site, finalUrl, markerFound) {
   return 'working';
 }
 
-function buildBrowserlessUrl(apiKey, site, sessionTimeout, proxyTypeOverride) {
+function buildBrowserlessParams(apiKey, site, sessionTimeout, proxyTypeOverride) {
   const params = new URLSearchParams();
   params.set('token', apiKey);
   params.set('timeout', String(sessionTimeout));
 
-  // Default to Australian residential proxy; callers can force a no-proxy fallback.
   const proxyType = proxyTypeOverride || site.proxy_type || 'residential';
   if (proxyType === 'residential') {
     params.set('proxy', 'residential');
@@ -30,7 +30,6 @@ function buildBrowserlessUrl(apiKey, site, sessionTimeout, proxyTypeOverride) {
     params.set('externalProxyServer', site.external_proxy_url);
   }
 
-  // Stealth & behavior toggles: default to safer Browserless settings for old records.
   if (site.stealth !== false) params.set('stealth', 'true');
   if (site.block_ads !== false) params.set('blockAds', 'true');
   if (site.block_consent_modals) params.set('blockConsentModals', 'true');
@@ -38,19 +37,24 @@ function buildBrowserlessUrl(apiKey, site, sessionTimeout, proxyTypeOverride) {
   if (site.accept_insecure_certs) params.set('acceptInsecureCerts', 'true');
   if (site.slow_mo_ms && site.slow_mo_ms > 0) params.set('slowMo', String(site.slow_mo_ms));
 
-  // Launch JSON for args
   const args = [];
-  if (site.viewport_width && site.viewport_height) {
-    args.push(`--window-size=${site.viewport_width},${site.viewport_height}`);
-  }
+  if (site.viewport_width && site.viewport_height) args.push(`--window-size=${site.viewport_width},${site.viewport_height}`);
   if (Array.isArray(site.extra_chrome_args)) {
     for (const a of site.extra_chrome_args) if (a && typeof a === 'string') args.push(a);
   }
-  if (args.length) {
-    params.set('launch', JSON.stringify({ args }));
-  }
+  if (args.length) params.set('launch', JSON.stringify({ args }));
+  return params;
+}
 
-  return `https://production-sfo.browserless.io/function?${params.toString()}`;
+function buildBrowserlessUrl(apiKey, site, sessionTimeout, proxyTypeOverride) {
+  return `https://production-sfo.browserless.io/function?${buildBrowserlessParams(apiKey, site, sessionTimeout, proxyTypeOverride).toString()}`;
+}
+
+function buildBrowserlessWsUrl(apiKey, site, sessionTimeout, recordingMode, proxyTypeOverride) {
+  const params = buildBrowserlessParams(apiKey, site, sessionTimeout, proxyTypeOverride);
+  if (recordingMode === 'replay') params.set('replay', 'true');
+  if (recordingMode === 'video') params.set('record', 'true');
+  return `wss://production-sfo.browserless.io?${params.toString()}`;
 }
 
 async function uploadScreenshot(base44, shot, context) {
@@ -73,9 +77,32 @@ async function uploadScreenshot(base44, shot, context) {
   });
 }
 
+async function saveRecording(base44, result, context) {
+  if (!context.run_id || !context.result_id || !result.recording_mode) return;
+  let videoUrl = '';
+  if (result.videoBinary) {
+    const file = new File([result.videoBinary], `${context.run_id}-${context.result_id}.webm`, { type: 'video/webm' });
+    const uploaded = await base44.asServiceRole.integrations.Core.UploadFile({ file });
+    videoUrl = uploaded.file_url;
+  }
+  await base44.asServiceRole.entities.RunRecording.create({
+    run_id: context.run_id,
+    result_id: context.result_id,
+    credential_id: context.credential_id || null,
+    username: context.username,
+    site: context.site_key,
+    mode: result.recording_mode,
+    dashboard_url: result.recording_mode === 'replay' ? 'https://account.browserless.io/session-replay' : '',
+    video_url: videoUrl,
+    note: result.recording_mode === 'replay' ? 'Replay is available in the Browserless dashboard after the session finishes.' : '',
+    captured_at: new Date().toISOString(),
+  });
+}
+
 async function saveEvidence(base44, result, context) {
   const shots = Array.isArray(result.screenshots) ? result.screenshots : [];
   await Promise.all(shots.map((shot) => uploadScreenshot(base44, shot, context)));
+  await saveRecording(base44, result, context);
   if (context.run_id && context.result_id) {
     await base44.asServiceRole.entities.AutomationDebugReport.create({
       run_id: context.run_id,
@@ -88,6 +115,84 @@ async function saveEvidence(base44, result, context) {
       report_json: JSON.stringify(result.debugReport || {}, null, 2),
       captured_at: new Date().toISOString(),
     });
+  }
+}
+
+async function performLoginOnPage(page, site, username, password, recordingMode) {
+  const waitMs = site.wait_after_submit_ms ?? 3500;
+  const successSelector = site.success_selector || DEFAULT_SUCCESS_SELECTOR;
+  const userSel = (site.username_selector || '#username').split(',')[0].trim();
+  const passSel = (site.password_selector || '#password').split(',')[0].trim();
+  const submitSel = (site.submit_selector || '#loginSubmit').split(',')[0].trim();
+  const navTimeout = site.navigation_timeout_ms ?? 30000;
+  const selTimeout = site.selector_timeout_ms ?? 10000;
+  const typeDelay = site.type_delay_ms ?? 30;
+  const waitUntil = site.wait_until || 'networkidle0';
+  const vw = site.viewport_width || 1920;
+  const vh = site.viewport_height || 1080;
+  const userAgent = site.user_agent || '';
+  const acceptLang = site.accept_language || '';
+
+  await page.setViewport({ width: vw, height: vh });
+  if (userAgent) await page.setUserAgent(userAgent);
+  if (acceptLang) await page.setExtraHTTPHeaders({ 'Accept-Language': acceptLang });
+
+  const cdp = recordingMode ? await page.createCDPSession() : null;
+  if (recordingMode === 'video') await cdp.send('Browserless.startRecording');
+
+  const screenshots = [];
+  const debugReport = { steps: [], started_at: new Date().toISOString(), login_url: site.login_url, recording_mode: recordingMode || 'none' };
+  const capture = async (step_label, step_index) => {
+    const url = page.url();
+    const title = await page.title().catch(() => '');
+    const base64 = await page.screenshot({ encoding: 'base64', fullPage: false }).catch(() => null);
+    debugReport.steps.push({ step_label, step_index, url, title, captured_at: new Date().toISOString() });
+    if (base64) screenshots.push({ step_label, step_index, base64 });
+  };
+
+  await page.goto(site.login_url, { waitUntil, timeout: navTimeout });
+  await capture('01 login page loaded', 1);
+  await page.waitForSelector(userSel, { timeout: selTimeout });
+  await page.click(userSel, { clickCount: 3 });
+  await page.type(userSel, username, { delay: typeDelay });
+  await capture('02 username entered', 2);
+  await page.waitForSelector(passSel, { timeout: selTimeout });
+  await page.click(passSel, { clickCount: 3 });
+  await page.type(passSel, password, { delay: typeDelay });
+  await capture('03 password entered', 3);
+  await page.waitForSelector(submitSel, { timeout: selTimeout });
+  await page.click(submitSel);
+  await new Promise((resolve) => setTimeout(resolve, waitMs));
+  await capture('04 after submit', 4);
+
+  const finalUrl = page.url();
+  const markerFound = await page.evaluate((sel) => {
+    const el = document.querySelector(sel);
+    if (!el) return false;
+    const rect = el.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  }, successSelector);
+
+  let videoBinary = null;
+  if (recordingMode === 'video') {
+    const response = await cdp.send('Browserless.stopRecording');
+    videoBinary = Uint8Array.from(String(response.value || ''), (char) => char.charCodeAt(0));
+  }
+  if (recordingMode === 'replay') await cdp.send('Browserless.stopSessionRecording').catch(() => null);
+
+  debugReport.finished_at = new Date().toISOString();
+  debugReport.final_url = finalUrl;
+  debugReport.success_marker_found = markerFound;
+  return { finalUrl, markerFound, screenshots, debugReport, recording_mode: recordingMode || '', videoBinary };
+}
+
+async function attemptLoginWithRecording({ browserlessWsUrl, site, username, password, recordingMode }) {
+  const browser = await puppeteer.connect({ browserWSEndpoint: browserlessWsUrl });
+  try {
+    const page = await browser.newPage();
+    return await performLoginOnPage(page, site, username, password, recordingMode);
+  } finally {
+    await browser.close();
   }
 }
 
@@ -191,7 +296,7 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json();
-    const { username, password, site_key, password_variants, custom_login_url, run_id, result_id, credential_id } = body;
+    const { username, password, site_key, password_variants, custom_login_url, run_id, result_id, credential_id, recording_mode } = body;
 
     if (!username || !password || !site_key) {
       return Response.json({ error: 'Missing username/password/site_key' }, { status: 400 });
@@ -222,10 +327,17 @@ Deno.serve(async (req) => {
     let workingPassword = null;
 
     for (const pwd of passwords) {
-      let r = await attemptLogin({ browserlessUrl, site, username, password: pwd });
+      const selectedRecordingMode = ['replay', 'video'].includes(recording_mode) ? recording_mode : '';
+      const browserlessWsUrl = selectedRecordingMode ? buildBrowserlessWsUrl(apiKey, site, sessionTimeout, selectedRecordingMode) : '';
+      let r = selectedRecordingMode
+        ? await attemptLoginWithRecording({ browserlessWsUrl, site, username, password: pwd, recordingMode: selectedRecordingMode })
+        : await attemptLogin({ browserlessUrl, site, username, password: pwd });
       if (r.error && (site.proxy_type || 'residential') === 'residential') {
         const fallbackUrl = buildBrowserlessUrl(apiKey, site, sessionTimeout, 'none');
-        const fallback = await attemptLogin({ browserlessUrl: fallbackUrl, site, username, password: pwd });
+        const fallbackWsUrl = selectedRecordingMode ? buildBrowserlessWsUrl(apiKey, site, sessionTimeout, selectedRecordingMode, 'none') : '';
+        const fallback = selectedRecordingMode
+          ? await attemptLoginWithRecording({ browserlessWsUrl: fallbackWsUrl, site, username, password: pwd, recordingMode: selectedRecordingMode })
+          : await attemptLogin({ browserlessUrl: fallbackUrl, site, username, password: pwd });
         if (!fallback.error) r = { ...fallback, proxy_fallback_used: true };
       }
       if (r.error) {

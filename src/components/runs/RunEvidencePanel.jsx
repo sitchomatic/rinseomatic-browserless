@@ -17,6 +17,11 @@ export default function RunEvidencePanel({ runId }) {
     queryFn: () => base44.entities.AutomationDebugReport.filter({ run_id: runId }, "-created_date", 1000),
     enabled: !!runId,
   });
+  const { data: recordings = [] } = useQuery({
+    queryKey: ["run-recordings", runId],
+    queryFn: () => base44.entities.RunRecording.filter({ run_id: runId }, "-created_date", 1000),
+    enabled: !!runId,
+  });
 
   React.useEffect(() => {
     if (!runId) return;
@@ -49,13 +54,31 @@ export default function RunEvidencePanel({ runId }) {
           <div className="flex items-center gap-2 text-sm font-semibold"><Camera className="h-4 w-4 text-primary" /> Automation evidence</div>
           <p className="text-xs text-muted-foreground mt-1">Multi-screenshot timeline and JS scenario debug reports for this run.</p>
         </div>
-        <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">{screenshots.length} shots · {reports.length} reports</div>
+        <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">{screenshots.length} shots · {reports.length} reports · {recordings.length} recordings</div>
       </div>
 
-      {screenshots.length === 0 && reports.length === 0 ? (
+      {screenshots.length === 0 && reports.length === 0 && recordings.length === 0 ? (
         <div className="px-5 py-10 text-sm text-muted-foreground text-center">Evidence will appear here as credentials are tested.</div>
       ) : (
         <div className="p-5 space-y-5">
+          {recordings.length > 0 && (
+            <div className="rounded-xl border border-border/70 bg-secondary/20 divide-y divide-border/60 overflow-hidden">
+              {recordings.map((recording) => (
+                <div key={recording.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-xs font-medium uppercase tracking-wider">{recording.mode === "video" ? "WebM video" : "Browserless session replay"}</div>
+                    <div className="text-[10px] font-mono text-muted-foreground mt-1 truncate">{recording.username || "credential"} · {recording.note || recording.site}</div>
+                  </div>
+                  {recording.mode === "video" && recording.video_url ? (
+                    <a href={recording.video_url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">Open video</a>
+                  ) : (
+                    <a href={recording.dashboard_url || "https://account.browserless.io/session-replay"} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">Open Browserless dashboard</a>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
           {screenshots.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
               {screenshots.map((shot) => (

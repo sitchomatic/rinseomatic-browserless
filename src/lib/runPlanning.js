@@ -10,10 +10,12 @@ export function clampNumber(value, min, max, fallback) {
 }
 
 export function normalizeRunForm(form = {}) {
+  const recordingMode = ["replay", "video"].includes(form.recording_mode) ? form.recording_mode : "none";
   return {
     site_key: form.site_key || "",
     concurrency: clampNumber(form.concurrency, MIN_BROWSER_SESSIONS, MAX_BROWSER_SESSIONS, 2),
     max_retries: clampNumber(form.max_retries, MIN_RETRIES, MAX_RETRIES, 1),
+    recording_mode: recordingMode,
     label: (form.label || "").trim(),
   };
 }

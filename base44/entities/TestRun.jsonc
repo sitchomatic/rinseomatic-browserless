@@ -27,6 +27,20 @@
       "type": "number",
       "default": 1
     },
+    "recording_mode": {
+      "type": "string",
+      "enum": [
+        "none",
+        "replay",
+        "video"
+      ],
+      "default": "none",
+      "description": "Optional Browserless recording mode for this run"
+    },
+    "recording_dashboard_url": {
+      "type": "string",
+      "description": "Browserless dashboard URL for session replays"
+    },
     "total_count": {
       "type": "number",
       "default": 0

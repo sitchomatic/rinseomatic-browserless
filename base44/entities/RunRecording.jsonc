@@ -1,0 +1,87 @@
+{
+  "name": "RunRecording",
+  "type": "object",
+  "properties": {
+    "run_id": {
+      "type": "string"
+    },
+    "result_id": {
+      "type": "string"
+    },
+    "credential_id": {
+      "type": "string"
+    },
+    "username": {
+      "type": "string"
+    },
+    "site": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "replay",
+        "video"
+      ]
+    },
+    "dashboard_url": {
+      "type": "string"
+    },
+    "video_url": {
+      "type": "string"
+    },
+    "note": {
+      "type": "string"
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "run_id",
+    "site",
+    "mode"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
