@@ -1,5 +1,5 @@
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/shared/PageHeader";
 import RunCard from "@/components/runs/RunCard";
@@ -11,11 +11,11 @@ import { mapByKey } from "@/lib/runMetrics";
 
 export default function Runs() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
 
   const { data: runs = [], isLoading } = useQuery({
     queryKey: ["test-runs"],
     queryFn: () => base44.entities.TestRun.list("-created_date", 200),
-    refetchInterval: 3000,
   });
   const { data: sites = [] } = useQuery({
     queryKey: ["sites"],
@@ -23,6 +23,19 @@ export default function Runs() {
   });
   const siteByKey = React.useMemo(() => mapByKey(sites), [sites]);
   const siteLabel = React.useCallback((k) => siteByKey.get(k)?.label || k, [siteByKey]);
+
+  React.useEffect(() => {
+    const unsubscribe = base44.entities.TestRun.subscribe((event) => {
+      qc.setQueryData(["test-runs"], (current = []) => {
+        if (event.type === "delete") return current.filter((run) => run.id !== event.id);
+        const exists = current.some((run) => run.id === event.id);
+        if (event.type === "create" && !exists) return [event.data, ...current].slice(0, 200);
+        if (event.type === "update") return current.map((run) => run.id === event.id ? event.data : run);
+        return current;
+      });
+    });
+    return unsubscribe;
+  }, [qc]);
 
   return (
     <div className="px-6 md:px-10 py-8 max-w-[1400px] mx-auto">

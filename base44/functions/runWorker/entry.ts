@@ -38,14 +38,18 @@ async function testOne(base44, site, result, credential) {
 }
 
 Deno.serve(async (req) => {
+  let runIdForCleanup = null;
+  let base44ForCleanup = null;
   try {
     const base44 = createClientFromRequest(req);
+    base44ForCleanup = base44;
 
     // Support both authenticated UI calls and service-role scheduler calls.
     let user = null;
     try { user = await base44.auth.me(); } catch (_) {}
 
     const { run_id } = await req.json();
+    runIdForCleanup = run_id;
     if (!run_id) return Response.json({ error: 'Missing run_id' }, { status: 400 });
 
     const runs = await base44.asServiceRole.entities.TestRun.filter({ id: run_id });
@@ -122,7 +126,7 @@ Deno.serve(async (req) => {
         });
       }
       await base44.asServiceRole.entities.TestRun.update(run_id, { worker_id: null, claimed_at: null });
-      return Response.json({ done: true, processed: 0 });
+      return Response.json({ done: !stillRunning, processed: 0 });
     }
 
     // Mark run as running on first batch
@@ -232,6 +236,9 @@ Deno.serve(async (req) => {
 
     return Response.json({ done: isDone, processed: claimed.length });
   } catch (error) {
+    if (runIdForCleanup && base44ForCleanup) {
+      await base44ForCleanup.asServiceRole.entities.TestRun.update(runIdForCleanup, { worker_id: null, claimed_at: null });
+    }
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
