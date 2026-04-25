@@ -3,13 +3,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, X } from "lucide-react";
 
 export default function CredentialDialog({ open, onOpenChange, onSubmit, credential }) {
   const [form, setForm] = React.useState({
     username: "",
     password: "",
-    password_variants: []
+    password_variants: [],
+    custom_login_url: "",
+    login_strategy: "form",
+    notes: "",
   });
 
   React.useEffect(() => {
@@ -17,7 +21,10 @@ export default function CredentialDialog({ open, onOpenChange, onSubmit, credent
       setForm({
         username: credential?.username || "",
         password: credential?.password || "",
-        password_variants: credential?.password_variants || []
+        password_variants: credential?.password_variants || [],
+        custom_login_url: credential?.custom_login_url || "",
+        login_strategy: credential?.login_strategy || "form",
+        notes: credential?.notes || "",
       });
     }
   }, [open, credential]);
@@ -62,6 +69,26 @@ export default function CredentialDialog({ open, onOpenChange, onSubmit, credent
           <div className="pt-1 border-t border-border/40">
             <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Optional</div>
             
+            <div className="grid gap-2 mb-3">
+              <Label>Login strategy</Label>
+              <Select value={form.login_strategy || "form"} onValueChange={(v) => setForm({ ...form, login_strategy: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="form">Form</SelectItem>
+                  <SelectItem value="api">API</SelectItem>
+                  <SelectItem value="custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2 mb-3">
+              <Label>Custom login URL</Label>
+              <Input className="font-mono text-xs" placeholder="Optional same-domain login URL override" value={form.custom_login_url || ""} onChange={(e) => setForm({ ...form, custom_login_url: e.target.value })} />
+            </div>
+            <div className="grid gap-2 mb-3">
+              <Label>Notes</Label>
+              <Input value={form.notes || ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Optional reminder or source" />
+            </div>
+
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
                 <Label>Password variants (fallback)</Label>

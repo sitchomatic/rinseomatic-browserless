@@ -13,8 +13,19 @@ function parseCredentialRows(text) {
   const hasHeader = uIdx !== -1 && pIdx !== -1;
   const rows = hasHeader ? parsed.slice(1) : parsed;
   return rows.map((parts) => {
-    if (hasHeader) return { username: parts[uIdx]?.trim(), password: parts[pIdx]?.trim() };
-    return { username: parts[0]?.trim(), password: parts[1]?.trim() };
+    if (hasHeader) {
+      const customUrlIdx = header.findIndex((h) => ["custom_login_url", "login_url", "url"].includes(h));
+      const strategyIdx = header.findIndex((h) => ["login_strategy", "strategy"].includes(h));
+      const notesIdx = header.findIndex((h) => ["notes", "note"].includes(h));
+      return {
+        username: parts[uIdx]?.trim(),
+        password: parts[pIdx]?.trim(),
+        custom_login_url: customUrlIdx >= 0 ? parts[customUrlIdx]?.trim() : "",
+        login_strategy: strategyIdx >= 0 ? parts[strategyIdx]?.trim() || "form" : "form",
+        notes: notesIdx >= 0 ? parts[notesIdx]?.trim() : "",
+      };
+    }
+    return { username: parts[0]?.trim(), password: parts[1]?.trim(), login_strategy: "form" };
   }).filter((r) => r.username && r.password);
 }
 
@@ -45,13 +56,13 @@ export default function CsvImportDialog({ open, onOpenChange, onImport }) {
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Import CSV</DialogTitle>
-          <DialogDescription>Upload reusable credentials. The target site is selected only when starting a run.</DialogDescription>
+          <DialogDescription>Upload reusable credentials. Supported columns: username,password,custom_login_url,login_strategy,notes.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <label className="flex items-center gap-2 px-3 py-6 rounded-lg border border-dashed border-border bg-secondary/30 cursor-pointer hover:bg-secondary/50 text-sm">
             <Upload className="h-4 w-4 text-muted-foreground" />
             <span className="text-muted-foreground">
-              {fileName ? `${fileName} · ${rows.length} rows` : "Click to upload CSV (columns: username,password)"}
+              {fileName ? `${fileName} · ${rows.length} rows` : "Click to upload CSV"}
             </span>
             <input type="file" accept=".csv,text/csv" onChange={onFile} className="hidden" />
           </label>

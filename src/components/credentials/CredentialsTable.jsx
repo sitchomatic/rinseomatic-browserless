@@ -28,10 +28,11 @@ export default function CredentialsTable({ items, selected, onToggle, onToggleAl
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className="grid grid-cols-[32px_minmax(0,2fr)_minmax(0,2fr)_110px_140px_80px] gap-3 px-4 py-2.5 border-b border-border bg-secondary/40 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+      <div className="grid grid-cols-[32px_minmax(0,2fr)_minmax(0,1.3fr)_110px_110px_140px_80px] gap-3 px-4 py-2.5 border-b border-border bg-secondary/40 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
         <Checkbox checked={allChecked} onCheckedChange={onToggleAll} />
         <div>Username</div>
         <div>Password</div>
+        <div>Strategy</div>
         <div>Status</div>
         <div>Last tested</div>
         <div></div>
@@ -40,11 +41,12 @@ export default function CredentialsTable({ items, selected, onToggle, onToggleAl
         {visibleItems.map((c) => (
           <div
             key={c.id}
-            className="grid grid-cols-[32px_minmax(0,2fr)_minmax(0,2fr)_110px_140px_80px] gap-3 px-4 py-2.5 items-center text-sm animate-fade-in"
+            className="grid grid-cols-[32px_minmax(0,2fr)_minmax(0,1.3fr)_110px_110px_140px_80px] gap-3 px-4 py-2.5 items-center text-sm animate-fade-in"
           >
             <Checkbox checked={selected.has(c.id)} onCheckedChange={() => onToggle(c.id)} />
-            <div className="truncate font-mono text-xs">{c.username}</div>
-            <div className="truncate font-mono text-xs text-muted-foreground">••••••••</div>
+            <div className="truncate font-mono text-xs" title={c.custom_login_url || c.notes || ""}>{c.username}</div>
+            <div className="truncate font-mono text-xs text-muted-foreground">••••••••{(c.password_variants || []).length ? ` +${c.password_variants.length}` : ""}</div>
+            <div className="text-xs font-mono text-muted-foreground uppercase">{c.login_strategy || "form"}</div>
             <div><StatusPill status={c.status || "untested"} /></div>
             <div className="text-xs text-muted-foreground font-mono">
               {c.last_tested ? format(new Date(c.last_tested), "MMM d HH:mm") : "—"}

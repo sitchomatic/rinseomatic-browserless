@@ -13,6 +13,7 @@ import SchedulePanel from "@/components/settings/SchedulePanel";
 import RepairSuggestionsPanel from "@/components/settings/RepairSuggestionsPanel";
 import NordLynxBridgePanel from "@/components/settings/NordLynxBridgePanel";
 import DebugPagePanel from "@/components/settings/DebugPagePanel";
+import SchedulerControlPanel from "@/components/settings/SchedulerControlPanel";
 import { Trash2, Sparkles, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -78,6 +79,7 @@ export default function Settings() {
 
       <div className="mb-6 space-y-6">
         <NetworkDiagnosticsPanel />
+        <SchedulerControlPanel />
         <PreferencesPanel />
         <ProxyInventoryPanel />
         <ProxyPoolPanel />
