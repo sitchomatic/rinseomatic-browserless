@@ -44,7 +44,7 @@ export default function RunEvidencePanel({ runId }) {
       <div className="px-5 py-4 border-b border-border/70 bg-secondary/20 flex items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold"><Camera className="h-4 w-4 text-primary" /> Automation evidence</div>
-          <p className="text-xs text-muted-foreground mt-1">Multi-screenshot timeline and JS scenario debug reports for this run.</p>
+          <p className="text-xs text-muted-foreground mt-1">Screenshots, WebSocket replays, WebM videos, and debug reports for this run.</p>
         </div>
         <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">{screenshots.length} shots · {reports.length} reports · {recordings.length} recordings</div>
       </div>
@@ -63,9 +63,12 @@ export default function RunEvidencePanel({ runId }) {
                       {recording.mode === "video" ? "WebM video" : "Browserless session replay"}
                     </div>
                     <div className="text-[10px] font-mono text-muted-foreground mt-1 truncate">{recording.username || "credential"} · {recording.note || recording.site}</div>
+                    {recording.captured_at && <div className="text-[10px] font-mono text-muted-foreground mt-1">{format(new Date(recording.captured_at), "MMM d, HH:mm:ss")}</div>}
                   </div>
                   {recording.mode === "video" && recording.video_url ? (
                     <video controls preload="metadata" src={recording.video_url} className="w-full md:w-72 rounded-lg border border-border bg-background" />
+                  ) : recording.mode === "video" ? (
+                    <span className="text-xs text-amber-300">Video unavailable</span>
                   ) : (
                     <a href={recording.dashboard_url || "https://account.browserless.io/session-replay"} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">Open Browserless dashboard</a>
                   )}

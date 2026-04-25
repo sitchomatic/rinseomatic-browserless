@@ -103,7 +103,9 @@ async function saveRecording(base44, result, context) {
 }
 
 async function saveEvidence(base44, result, context) {
-  const shots = Array.isArray(result.screenshots) ? result.screenshots : [];
+  const mode = result.debugReport?.screenshot_mode || 'key_steps';
+  const shouldStoreShots = mode !== 'failures' || result.status === 'failed' || result.status === 'error';
+  const shots = shouldStoreShots && Array.isArray(result.screenshots) ? result.screenshots : [];
   await Promise.all(shots.map((shot) => uploadScreenshot(base44, shot, context)));
   await saveRecording(base44, result, context);
   if (context.run_id && context.result_id) {
@@ -127,6 +129,18 @@ function shouldCaptureScreenshot(mode, stepIndex) {
   return true;
 }
 
+function decodeRecordingValue(value) {
+  if (!value) return null;
+  const text = String(value);
+  const base64 = text.startsWith('data:') ? text.split(',').pop() : text;
+  if (/^[A-Za-z0-9+/=\r\n]+$/.test(base64) && base64.length > 64) {
+    try {
+      return Uint8Array.from(atob(base64.replace(/\s/g, '')), (char) => char.charCodeAt(0));
+    } catch (_) {}
+  }
+  return Uint8Array.from(text, (char) => char.charCodeAt(0) & 255);
+}
+
 async function performLoginOnPage(page, site, username, password, recordingMode, screenshotMode = 'key_steps') {
   const waitMs = site.wait_after_submit_ms ?? 3500;
   const successSelector = site.success_selector || DEFAULT_SUCCESS_SELECTOR;
@@ -147,10 +161,14 @@ async function performLoginOnPage(page, site, username, password, recordingMode,
   if (acceptLang) await page.setExtraHTTPHeaders({ 'Accept-Language': acceptLang });
 
   const cdp = recordingMode ? await page.createCDPSession() : null;
-  if (recordingMode === 'video') await cdp.send('Browserless.startRecording');
+  let recordingStarted = false;
+  if (recordingMode === 'video') {
+    await cdp.send('Browserless.startRecording');
+    recordingStarted = true;
+  }
 
   const screenshots = [];
-  const debugReport = { steps: [], started_at: new Date().toISOString(), login_url: site.login_url, recording_mode: recordingMode || 'none' };
+  const debugReport = { steps: [], started_at: new Date().toISOString(), login_url: site.login_url, recording_mode: recordingMode || 'none', screenshot_mode: screenshotMode };
   const capture = async (step_label, step_index) => {
     const url = page.url();
     const title = await page.title().catch(() => '');
@@ -185,12 +203,12 @@ async function performLoginOnPage(page, site, username, password, recordingMode,
   }, successSelector);
 
   let videoBinary = null;
-  if (recordingMode === 'video') {
+  if (recordingMode === 'video' && recordingStarted) {
     const response = await cdp.send('Browserless.stopRecording').catch(() => null);
-    const value = response?.value || '';
-    videoBinary = value ? Uint8Array.from(String(value), (char) => char.charCodeAt(0) & 255) : null;
+    videoBinary = decodeRecordingValue(response?.value || '');
   }
   if (recordingMode === 'replay') await cdp.send('Browserless.stopSessionRecording').catch(() => null);
+  await cdp?.detach().catch(() => null);
 
   debugReport.finished_at = new Date().toISOString();
   debugReport.final_url = finalUrl;
@@ -252,7 +270,7 @@ async function attemptLogin({ browserlessUrl, site, username, password, screensh
         if (mode === 'final') return stepIndex === 4;
         return true;
       };
-      const debugReport = { steps: [], started_at: new Date().toISOString(), login_url: loginUrl, screenshot_mode: screenshotMode };
+      const debugReport = { steps: [], started_at: new Date().toISOString(), login_url: loginUrl, recording_mode: 'none', screenshot_mode: screenshotMode };
       const capture = async (step_label, step_index) => {
         const url = page.url();
         const title = await page.title().catch(() => '');
@@ -349,7 +367,7 @@ Deno.serve(async (req) => {
 
     for (const pwd of passwords) {
       const selectedRecordingMode = ['replay', 'video'].includes(recording_mode) ? recording_mode : '';
-      const selectedScreenshotMode = ['off', 'final', 'key_steps'].includes(screenshot_mode) ? screenshot_mode : 'key_steps';
+      const selectedScreenshotMode = ['off', 'final', 'failures', 'key_steps'].includes(screenshot_mode) ? screenshot_mode : 'key_steps';
       const browserlessWsUrl = selectedRecordingMode ? buildBrowserlessWsUrl(apiKey, site, sessionTimeout, selectedRecordingMode) : '';
       let r = selectedRecordingMode
         ? await attemptLoginWithRecording({ browserlessWsUrl, site, username, password: pwd, recordingMode: selectedRecordingMode, screenshotMode: selectedScreenshotMode })

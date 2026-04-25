@@ -57,6 +57,8 @@ export default function NewRunDialog({ open, onOpenChange, sites, defaultSiteKey
           <p className="text-xs text-muted-foreground rounded-md border border-border bg-secondary/40 p-2">
             Effect: clicking <span className="text-foreground font-medium">Start test run</span> will queue <span className="font-mono text-foreground">{credentialCount}</span> reusable credential
             {credentialCount === 1 ? "" : "s"} against <span className="font-mono text-foreground">{normalizedForm.site_key || "—"}</span>.
+            {normalizedForm.recording_mode !== "none" && <span className="block mt-1 text-amber-300">Recording enabled: this run will use WebSocket mode and 1 browser session at a time.</span>}
+            {normalizedForm.screenshot_mode === "failures" && <span className="block mt-1 text-muted-foreground">Failure-only screenshots will be saved only for failed or errored credentials.</span>}
             {credentialCount === 0 && <span className="block mt-1 text-amber-300">No credentials exist yet, so the run cannot start.</span>}
           </p>
         </div>
