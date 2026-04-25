@@ -50,21 +50,12 @@ export default function Dashboard() {
     });
     return map;
   }, [activeRuns]);
-  const credentialsBySite = React.useMemo(() => {
-    const map = new Map();
-    credentials.forEach((credential) => {
-      const list = map.get(credential.site_key) || [];
-      list.push(credential);
-      map.set(credential.site_key, list);
-    });
-    return map;
-  }, [credentials]);
   const isLoading = sitesLoading || runsLoading;
 
   const startRunMut = useMutation({
     mutationFn: async (site) => {
-      const siteCredentials = credentialsBySite.get(site.key) || [];
-      if (siteCredentials.length === 0) throw new Error("No credentials for this site");
+      const siteCredentials = credentials;
+      if (siteCredentials.length === 0) throw new Error("No credentials available");
       const run = await base44.entities.TestRun.create({
         label: `Maintenance · ${site.label}`,
         site_key: site.key,
@@ -77,7 +68,7 @@ export default function Dashboard() {
       await runInBatches(siteCredentials, 500, (chunk) => base44.entities.TestResult.bulkCreate(chunk.map((credential) => ({
         run_id: run.id,
         credential_id: credential.id,
-        site_key: credential.site_key,
+        site_key: site.key,
         username: credential.username,
         status: "queued",
       }))));
@@ -143,7 +134,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             {siteStats.map(({ site, lastRun }) => {
               const siteActiveRuns = activeRunsBySite.get(site.key) || [];
-              const credentialCount = credentialsBySite.get(site.key)?.length || 0;
+              const credentialCount = credentials.length;
               return (
                 <SiteCard
                   key={site.key}
@@ -191,7 +182,7 @@ function SiteCard({ site, lastRun, activeRuns = [], credentialCount = 0, onStart
             <Square className="h-3.5 w-3.5" /> Stop
           </Button>
         ) : (
-          <Button size="sm" className="gap-2 flex-1" onClick={onStart} disabled={isStarting || credentialCount === 0} title={credentialCount === 0 ? "No credentials for this site" : "Start maintenance run"}>
+          <Button size="sm" className="gap-2 flex-1" onClick={onStart} disabled={isStarting || credentialCount === 0} title={credentialCount === 0 ? "No credentials available" : "Start maintenance run"}>
             <Play className="h-3.5 w-3.5" /> Start
           </Button>
         )}

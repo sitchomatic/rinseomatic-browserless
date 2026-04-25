@@ -3,17 +3,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Plus, X } from "lucide-react";
 
-export default function CredentialDialog({ open, onOpenChange, sites, onSubmit }) {
+export default function CredentialDialog({ open, onOpenChange, onSubmit }) {
   const [form, setForm] = React.useState({
     username: "",
     password: "",
-    password_variants: [],
-    site_key: "",
-    custom_login_url: "",
-    login_strategy: "form"
+    password_variants: []
   });
 
   React.useEffect(() => {
@@ -21,16 +17,13 @@ export default function CredentialDialog({ open, onOpenChange, sites, onSubmit }
       setForm({
         username: "",
         password: "",
-        password_variants: [],
-        site_key: sites?.[0]?.key || "",
-        custom_login_url: "",
-        login_strategy: "form"
+        password_variants: []
       });
     }
-  }, [open, sites]);
+  }, [open]);
 
   const submit = () => {
-    if (!form.username || !form.password || !form.site_key) return;
+    if (!form.username || !form.password) return;
     onSubmit(form);
     onOpenChange(false);
   };
@@ -54,18 +47,9 @@ export default function CredentialDialog({ open, onOpenChange, sites, onSubmit }
       <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add credential</DialogTitle>
-          <DialogDescription>Store one username and password for testing against the selected site.</DialogDescription>
+          <DialogDescription>Store one reusable username and password. Choose the target site only when starting a run.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="grid gap-2">
-            <Label>Site</Label>
-            <Select value={form.site_key} onValueChange={(v) => setForm({ ...form, site_key: v })}>
-              <SelectTrigger><SelectValue placeholder="Pick a site" /></SelectTrigger>
-              <SelectContent>
-                {(sites || []).map((s) => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
           <div className="grid gap-2">
             <Label>Username / email</Label>
             <Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
@@ -78,27 +62,6 @@ export default function CredentialDialog({ open, onOpenChange, sites, onSubmit }
           <div className="pt-1 border-t border-border/40">
             <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Optional</div>
             
-            <div className="grid gap-2 mb-3">
-              <Label>Custom login URL</Label>
-              <Input 
-                placeholder="Override default site URL" 
-                value={form.custom_login_url} 
-                onChange={(e) => setForm({ ...form, custom_login_url: e.target.value })} 
-              />
-            </div>
-
-            <div className="grid gap-2 mb-3">
-              <Label>Login strategy</Label>
-              <Select value={form.login_strategy} onValueChange={(v) => setForm({ ...form, login_strategy: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="form">HTML form</SelectItem>
-                  <SelectItem value="api">API endpoint</SelectItem>
-                  <SelectItem value="custom">Custom flow</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
                 <Label>Password variants (fallback)</Label>

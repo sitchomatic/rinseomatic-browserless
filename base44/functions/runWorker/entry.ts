@@ -11,7 +11,6 @@ async function testOne(base44, site, result, credential) {
       username: credential.username,
       password: credential.password,
       password_variants: credential.password_variants || [],
-      custom_login_url: credential.custom_login_url || undefined,
       site_key: site.key,
     });
 

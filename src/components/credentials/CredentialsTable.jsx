@@ -3,12 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2 } from "lucide-react";
 import StatusPill from "@/components/shared/StatusPill";
-import SiteChip from "@/components/shared/SiteChip";
 import { format } from "date-fns";
 
 const PAGE_SIZE = 250;
 
-export default function CredentialsTable({ items, sites, selected, onToggle, onToggleAll, onDelete }) {
+export default function CredentialsTable({ items, selected, onToggle, onToggleAll, onDelete }) {
   const [visibleCount, setVisibleCount] = React.useState(PAGE_SIZE);
   const visibleItems = React.useMemo(() => items.slice(0, visibleCount), [items, visibleCount]);
   const hiddenCount = Math.max(0, items.length - visibleItems.length);
@@ -16,11 +15,6 @@ export default function CredentialsTable({ items, sites, selected, onToggle, onT
   React.useEffect(() => {
     setVisibleCount(PAGE_SIZE);
   }, [items]);
-
-  const siteByKey = React.useMemo(
-    () => Object.fromEntries((sites || []).map((s) => [s.key, s])),
-    [sites]
-  );
 
   const allChecked = items.length > 0 && items.every((item) => selected.has(item.id));
 
@@ -34,11 +28,10 @@ export default function CredentialsTable({ items, sites, selected, onToggle, onT
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className="grid grid-cols-[32px_minmax(0,2fr)_minmax(0,2fr)_120px_110px_140px_48px] gap-3 px-4 py-2.5 border-b border-border bg-secondary/40 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+      <div className="grid grid-cols-[32px_minmax(0,2fr)_minmax(0,2fr)_110px_140px_48px] gap-3 px-4 py-2.5 border-b border-border bg-secondary/40 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
         <Checkbox checked={allChecked} onCheckedChange={onToggleAll} />
         <div>Username</div>
         <div>Password</div>
-        <div>Site</div>
         <div>Status</div>
         <div>Last tested</div>
         <div></div>
@@ -47,12 +40,11 @@ export default function CredentialsTable({ items, sites, selected, onToggle, onT
         {visibleItems.map((c) => (
           <div
             key={c.id}
-            className="grid grid-cols-[32px_minmax(0,2fr)_minmax(0,2fr)_120px_110px_140px_48px] gap-3 px-4 py-2.5 items-center text-sm animate-fade-in"
+            className="grid grid-cols-[32px_minmax(0,2fr)_minmax(0,2fr)_110px_140px_48px] gap-3 px-4 py-2.5 items-center text-sm animate-fade-in"
           >
             <Checkbox checked={selected.has(c.id)} onCheckedChange={() => onToggle(c.id)} />
             <div className="truncate font-mono text-xs">{c.username}</div>
             <div className="truncate font-mono text-xs text-muted-foreground">••••••••</div>
-            <div><SiteChip siteKey={c.site_key} label={siteByKey[c.site_key]?.label} size="sm" /></div>
             <div><StatusPill status={c.status || "untested"} /></div>
             <div className="text-xs text-muted-foreground font-mono">
               {c.last_tested ? format(new Date(c.last_tested), "MMM d HH:mm") : "—"}

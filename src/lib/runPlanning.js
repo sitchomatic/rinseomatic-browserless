@@ -19,17 +19,12 @@ export function normalizeRunForm(form = {}) {
 }
 
 export function countCredentialsForSite(credentials = [], siteKey = "") {
-  if (!siteKey) return 0;
-  let count = 0;
-  for (const credential of credentials) {
-    if (credential.site_key === siteKey) count += 1;
-  }
-  return count;
+  return siteKey ? credentials.length : 0;
 }
 
 export function credentialsForRun(allCredentials = [], selectedCredentials = [], siteKey = "") {
-  if (selectedCredentials.length > 0) return selectedCredentials;
-  return allCredentials.filter((credential) => credential.site_key === siteKey);
+  if (!siteKey) return [];
+  return selectedCredentials.length > 0 ? selectedCredentials : allCredentials;
 }
 
 export { MAX_BROWSER_SESSIONS, MIN_BROWSER_SESSIONS, MAX_RETRIES, MIN_RETRIES };

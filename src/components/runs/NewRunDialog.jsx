@@ -24,7 +24,7 @@ export default function NewRunDialog({ open, onOpenChange, sites, defaultSiteKey
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>New test run</DialogTitle>
-          <DialogDescription>Select the site and this will queue only credentials assigned to that site. Selected credentials are used when provided.</DialogDescription>
+          <DialogDescription>Select the target site. Credentials are reusable and are applied to this site only for this run.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="grid gap-2">
@@ -53,9 +53,9 @@ export default function NewRunDialog({ open, onOpenChange, sites, defaultSiteKey
             <Input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="e.g. nightly batch" />
           </div>
           <p className="text-xs text-muted-foreground rounded-md border border-border bg-secondary/40 p-2">
-            Effect: clicking <span className="text-foreground font-medium">Start test run</span> will queue <span className="font-mono text-foreground">{credentialCount}</span> credential
-            {credentialCount === 1 ? "" : "s"} assigned to <span className="font-mono text-foreground">{normalizedForm.site_key || "—"}</span>.
-            {credentialCount === 0 && <span className="block mt-1 text-amber-300">No credentials exist for this site yet, so the run cannot start.</span>}
+            Effect: clicking <span className="text-foreground font-medium">Start test run</span> will queue <span className="font-mono text-foreground">{credentialCount}</span> reusable credential
+            {credentialCount === 1 ? "" : "s"} against <span className="font-mono text-foreground">{normalizedForm.site_key || "—"}</span>.
+            {credentialCount === 0 && <span className="block mt-1 text-amber-300">No credentials exist yet, so the run cannot start.</span>}
           </p>
         </div>
         <DialogFooter>

@@ -4,7 +4,6 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, Upload, Play, KeyRound, Settings as SettingsIcon } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PageHeader from "@/components/shared/PageHeader";
 import EmptyState from "@/components/shared/EmptyState";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
@@ -25,7 +24,6 @@ export default function Credentials() {
   const [importOpen, setImportOpen] = React.useState(false);
   const [runOpen, setRunOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
-  const [siteFilter, setSiteFilter] = React.useState("all");
   const [selected, setSelected] = React.useState(new Set());
   const [confirmDelete, setConfirmDelete] = React.useState(null);
 
@@ -58,16 +56,13 @@ export default function Credentials() {
 
   const {
     filtered,
-    countsBySite,
     selectedItems,
-    runSiteKey,
-    sameSite,
     canRunSelected,
     firstSiteWithCredentials,
     currentFilterHasCredentials,
   } = React.useMemo(
-    () => analyzeCredentials(items, sites, selected, siteFilter, search),
-    [items, sites, selected, siteFilter, search]
+    () => analyzeCredentials(items, sites, selected, "all", search),
+    [items, sites, selected, search]
   );
 
   React.useEffect(() => {
@@ -94,16 +89,12 @@ export default function Credentials() {
     return new Set([...s, ...filtered.map((c) => c.id)]);
   });
 
-  const runDisabledReason = selected.size > 0 && !sameSite
-    ? "Selected credentials must belong to one site"
-    : !currentFilterHasCredentials
-      ? "No credentials exist for this selected site"
-      : undefined;
+  const runDisabledReason = !currentFilterHasCredentials ? "No credentials available" : undefined;
 
   const startRun = async (rawForm) => {
     const { site_key, concurrency, max_retries, label } = normalizeRunForm(rawForm);
     const creds = credentialsForRun(items, selectedItems, site_key);
-    if (creds.length === 0) return toast.error("No credentials for this site");
+    if (creds.length === 0) return toast.error("No credentials available");
 
     const run = await base44.entities.TestRun.create({
       label: label || `${creds.length} × ${site_key}`,
@@ -117,7 +108,7 @@ export default function Credentials() {
       chunk.map((c) => ({
         run_id: run.id,
         credential_id: c.id,
-        site_key: c.site_key,
+        site_key,
         username: c.username,
         status: "queued",
       }))
@@ -146,23 +137,14 @@ export default function Credentials() {
               title={runDisabledReason || "Open a test run dialog for the selected site or selected credentials"}
             >
               <Play className="h-3.5 w-3.5" />
-              {canRunSelected ? `Test ${selected.size} selected` : siteFilter !== "all" ? `Test ${siteFilter}` : "Test all"}
+              {canRunSelected ? `Test ${selected.size} selected` : "Test all"}
             </Button>
           </>
         }
       />
 
       <div className="flex flex-col md:flex-row md:items-center gap-3 mb-5">
-        <Tabs value={siteFilter} onValueChange={setSiteFilter}>
-          <TabsList className="bg-card border border-border">
-            <TabsTrigger value="all">All <span className="ml-2 text-muted-foreground font-mono">{items.length}</span></TabsTrigger>
-            {sites.map((s) => (
-              <TabsTrigger key={s.key} value={s.key}>
-                {s.label} <span className="ml-2 text-muted-foreground font-mono">{countsBySite[s.key] || 0}</span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <div className="text-xs text-muted-foreground font-mono uppercase tracking-wider">{items.length} reusable credentials</div>
         <div className="relative flex-1 max-w-sm md:ml-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search username..." className="pl-9 font-mono h-9" />
@@ -199,7 +181,6 @@ export default function Credentials() {
       ) : (
         <CredentialsTable
           items={filtered}
-          sites={sites}
           selected={selected}
           onToggle={toggle}
           onToggleAll={toggleAll}
@@ -217,13 +198,13 @@ export default function Credentials() {
         onConfirm={() => { if (confirmDelete) deleteMut.mutate(confirmDelete.id); setConfirmDelete(null); }}
       />
 
-      <CredentialDialog open={addOpen} onOpenChange={setAddOpen} sites={sites} onSubmit={(d) => createMut.mutate(d)} />
-      <CsvImportDialog open={importOpen} onOpenChange={setImportOpen} sites={sites} onImport={(rows) => bulkMut.mutate(rows)} />
+      <CredentialDialog open={addOpen} onOpenChange={setAddOpen} onSubmit={(d) => createMut.mutate(d)} />
+      <CsvImportDialog open={importOpen} onOpenChange={setImportOpen} onImport={(rows) => bulkMut.mutate(rows)} />
       <NewRunDialog
         open={runOpen}
         onOpenChange={setRunOpen}
         sites={sites}
-        defaultSiteKey={runSiteKey || (siteFilter !== "all" ? siteFilter : firstSiteWithCredentials || sites[0]?.key)}
+        defaultSiteKey={firstSiteWithCredentials || sites[0]?.key}
         credentials={selectedItems.length > 0 ? selectedItems : items}
         onCreate={startRun}
       />
