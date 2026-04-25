@@ -47,7 +47,7 @@ export default function CredentialsTable({ items, sites, selected, onToggle, onT
         {visibleItems.map((c) => (
           <div
             key={c.id}
-            className="grid grid-cols-[32px_minmax(0,2fr)_minmax(0,2fr)_120px_110px_140px_48px] gap-3 px-4 py-2.5 items-center text-sm"
+            className="grid grid-cols-[32px_minmax(0,2fr)_minmax(0,2fr)_120px_110px_140px_48px] gap-3 px-4 py-2.5 items-center text-sm animate-fade-in"
           >
             <Checkbox checked={selected.has(c.id)} onCheckedChange={() => onToggle(c.id)} />
             <div className="truncate font-mono text-xs">{c.username}</div>

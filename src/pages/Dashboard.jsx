@@ -1,14 +1,19 @@
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/shared/PageHeader";
-import { CheckCircle2, XCircle, Clock } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Play, Square } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatMs } from "@/lib/sites";
 import { buildDashboardMetrics } from "@/lib/dashboardMetrics";
 import MaintenanceStatusBadge from "@/components/dashboard/MaintenanceStatusBadge";
+import DashboardVisualSummary from "@/components/dashboard/DashboardVisualSummary";
+import { Button } from "@/components/ui/button";
+import { runInBatches } from "@/lib/batches";
+import { toast } from "sonner";
 
 export default function Dashboard() {
+  const qc = useQueryClient();
   const { data: userPrefs } = useQuery({
     queryKey: ["me"],
     queryFn: () => base44.auth.me(),
@@ -28,8 +33,78 @@ export default function Dashboard() {
     refetchInterval: refreshMs,
   });
 
+  const { data: credentials = [] } = useQuery({
+    queryKey: ["dashboard-credentials"],
+    queryFn: () => base44.entities.Credential.list("-created_date", 5000),
+    staleTime: 30 * 1000,
+  });
+
   const { siteStats, totals } = React.useMemo(() => buildDashboardMetrics(sites, runs), [sites, runs]);
+  const activeRuns = React.useMemo(() => runs.filter((run) => run.status === "queued" || run.status === "running"), [runs]);
+  const activeRunsBySite = React.useMemo(() => {
+    const map = new Map();
+    activeRuns.forEach((run) => {
+      const list = map.get(run.site_key) || [];
+      list.push(run);
+      map.set(run.site_key, list);
+    });
+    return map;
+  }, [activeRuns]);
+  const credentialsBySite = React.useMemo(() => {
+    const map = new Map();
+    credentials.forEach((credential) => {
+      const list = map.get(credential.site_key) || [];
+      list.push(credential);
+      map.set(credential.site_key, list);
+    });
+    return map;
+  }, [credentials]);
   const isLoading = sitesLoading || runsLoading;
+
+  const startRunMut = useMutation({
+    mutationFn: async (site) => {
+      const siteCredentials = credentialsBySite.get(site.key) || [];
+      if (siteCredentials.length === 0) throw new Error("No credentials for this site");
+      const run = await base44.entities.TestRun.create({
+        label: `Maintenance · ${site.label}`,
+        site_key: site.key,
+        concurrency: 2,
+        max_retries: 1,
+        status: "queued",
+        total_count: siteCredentials.length,
+        pending_count: siteCredentials.length,
+      });
+      await runInBatches(siteCredentials, 500, (chunk) => base44.entities.TestResult.bulkCreate(chunk.map((credential) => ({
+        run_id: run.id,
+        credential_id: credential.id,
+        site_key: credential.site_key,
+        username: credential.username,
+        status: "queued",
+      }))));
+      await base44.functions.invoke("runWorker", { run_id: run.id });
+      return run;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["test-runs-all"] });
+      toast.success("Maintenance run started");
+    },
+    onError: (error) => toast.error(error?.message || "Could not start run"),
+  });
+
+  const stopRunMut = useMutation({
+    mutationFn: async (siteKey) => {
+      const siteRuns = activeRunsBySite.get(siteKey) || [];
+      await Promise.all(siteRuns.map(async (run) => {
+        await base44.entities.TestRun.update(run.id, { status: "cancelled", ended_at: new Date().toISOString(), pending_count: 0, worker_id: null, claimed_at: null });
+        const pending = await base44.entities.TestResult.filter({ run_id: run.id }, "-created_date", 5000);
+        await Promise.all(pending.filter((result) => result.status === "queued" || result.status === "running").map((result) => base44.entities.TestResult.update(result.id, { status: "error", error_message: "Cancelled" })));
+      }));
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["test-runs-all"] });
+      toast.success("Maintenance run stopped");
+    },
+  });
 
   return (
     <div className="px-6 md:px-10 py-8 max-w-[1400px] mx-auto space-y-8">
@@ -45,6 +120,8 @@ export default function Dashboard() {
         <SummaryTile label="Working" value={totals.working} icon={CheckCircle2} accent="text-emerald-300" />
         <SummaryTile label="Failed / Error" value={totals.failed} icon={XCircle} accent="text-rose-300" />
       </div>
+
+      <DashboardVisualSummary totals={totals} siteStats={siteStats} activeRuns={activeRuns} />
 
       {isLoading ? (
         <div className="rounded-xl border border-border bg-card/40 py-16 flex items-center justify-center">
@@ -64,9 +141,23 @@ export default function Dashboard() {
             <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">{siteStats.length} sites</div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-            {siteStats.map(({ site, lastRun }) => (
-              <SiteCard key={site.key} site={site} lastRun={lastRun} />
-            ))}
+            {siteStats.map(({ site, lastRun }) => {
+              const siteActiveRuns = activeRunsBySite.get(site.key) || [];
+              const credentialCount = credentialsBySite.get(site.key)?.length || 0;
+              return (
+                <SiteCard
+                  key={site.key}
+                  site={site}
+                  lastRun={lastRun}
+                  activeRuns={siteActiveRuns}
+                  credentialCount={credentialCount}
+                  onStart={() => startRunMut.mutate(site)}
+                  onStop={() => stopRunMut.mutate(site.key)}
+                  isStarting={startRunMut.isPending}
+                  isStopping={stopRunMut.isPending}
+                />
+              );
+            })}
           </div>
         </section>
       )}
@@ -74,7 +165,7 @@ export default function Dashboard() {
   );
 }
 
-function SiteCard({ site, lastRun }) {
+function SiteCard({ site, lastRun, activeRuns = [], credentialCount = 0, onStart, onStop, isStarting, isStopping }) {
   const working = lastRun?.working_count || 0;
   const failed = (lastRun?.failed_count || 0) + (lastRun?.error_count || 0);
   const total = lastRun?.total_count || 0;
@@ -82,6 +173,7 @@ function SiteCard({ site, lastRun }) {
 
   const passRate = pct !== null ? pct : null;
   const hasRun = !!lastRun;
+  const isActive = activeRuns.length > 0;
 
   return (
     <div className="rounded-2xl border border-border bg-card/80 p-5 shadow-sm hover:border-primary/30 transition-colors flex flex-col gap-5">
@@ -91,6 +183,19 @@ function SiteCard({ site, lastRun }) {
           <div className="text-[10px] font-mono text-muted-foreground mt-1 truncate max-w-[320px]">{site.login_url}</div>
         </div>
         <MaintenanceStatusBadge hasRun={hasRun} passRate={passRate} />
+      </div>
+
+      <div className="flex items-center gap-2">
+        {isActive ? (
+          <Button variant="outline" size="sm" className="gap-2 flex-1 border-rose-500/30 text-rose-300 hover:text-rose-200" onClick={onStop} disabled={isStopping}>
+            <Square className="h-3.5 w-3.5" /> Stop
+          </Button>
+        ) : (
+          <Button size="sm" className="gap-2 flex-1" onClick={onStart} disabled={isStarting || credentialCount === 0} title={credentialCount === 0 ? "No credentials for this site" : "Start maintenance run"}>
+            <Play className="h-3.5 w-3.5" /> Start
+          </Button>
+        )}
+        <div className="text-[10px] font-mono text-muted-foreground px-2">{credentialCount} creds</div>
       </div>
 
       {hasRun ? (
@@ -108,7 +213,7 @@ function SiteCard({ site, lastRun }) {
             </div>
             <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
               <div
-                className="h-full rounded-full transition-all"
+                className="h-full rounded-full transition-all duration-700 ease-out"
                 style={{
                   width: `${passRate}%`,
                   background: passRate >= 80 ? "hsl(var(--success))" : passRate >= 40 ? "hsl(var(--warning))" : "hsl(var(--destructive))",
