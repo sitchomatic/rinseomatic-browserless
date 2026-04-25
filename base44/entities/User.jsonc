@@ -1,0 +1,37 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "description": "The role of the user in the app",
+      "enum": [
+        "admin",
+        "user"
+      ]
+    },
+    "notify_run_completed": {
+      "type": "boolean",
+      "default": true,
+      "description": "Notify when a test run completes"
+    },
+    "notify_run_failed": {
+      "type": "boolean",
+      "default": true,
+      "description": "Notify when a test run fails or has errors"
+    },
+    "notify_maintenance_alerts": {
+      "type": "boolean",
+      "default": true,
+      "description": "Notify about dashboard maintenance status alerts"
+    },
+    "dashboard_refresh_seconds": {
+      "type": "number",
+      "default": 30,
+      "description": "Dashboard refresh speed in seconds"
+    }
+  },
+  "required": [
+    "role"
+  ]
+}

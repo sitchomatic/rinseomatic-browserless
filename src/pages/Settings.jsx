@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/shared/PageHeader";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import SiteFormPanel, { BLANK_SITE } from "@/components/settings/SiteFormPanel";
+import PreferencesPanel from "@/components/settings/PreferencesPanel";
 import { Trash2, Sparkles, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -53,7 +54,7 @@ export default function Settings() {
       <PageHeader
         eyebrow="03 · config"
         title="Settings"
-        description="Per-site automation profile: selectors, proxy routing, stealth, viewport, and Chrome flags. Browserless API key is stored server-side."
+        description="Manage personal preferences and per-site automation profiles. Browserless API key is stored server-side."
         actions={
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" className="gap-2" onClick={() => normalizeMut.mutate()} disabled={normalizeMut.isPending} title="Apply safe defaults to every existing site: AU residential proxy, stealth, ad blocking, timings, and browser locale">
@@ -67,6 +68,10 @@ export default function Settings() {
           </div>
         }
       />
+
+      <div className="mb-6">
+        <PreferencesPanel />
+      </div>
 
       <div className="grid lg:grid-cols-[1fr_440px] gap-6">
         <div className="space-y-3">

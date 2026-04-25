@@ -9,14 +9,23 @@ import { buildDashboardMetrics } from "@/lib/dashboardMetrics";
 import MaintenanceStatusBadge from "@/components/dashboard/MaintenanceStatusBadge";
 
 export default function Dashboard() {
+  const { data: userPrefs } = useQuery({
+    queryKey: ["me"],
+    queryFn: () => base44.auth.me(),
+    staleTime: 60 * 1000,
+  });
+  const refreshMs = Math.max(15, Number(userPrefs?.dashboard_refresh_seconds ?? 30)) * 1000;
+
   const { data: sites = [], isLoading: sitesLoading } = useQuery({
     queryKey: ["sites"],
     queryFn: () => base44.entities.Site.list("-created_date", 100),
+    refetchInterval: refreshMs,
   });
 
   const { data: runs = [], isLoading: runsLoading } = useQuery({
     queryKey: ["test-runs-all"],
     queryFn: () => base44.entities.TestRun.list("-created_date", 500),
+    refetchInterval: refreshMs,
   });
 
   const { siteStats, totals } = React.useMemo(() => buildDashboardMetrics(sites, runs), [sites, runs]);
