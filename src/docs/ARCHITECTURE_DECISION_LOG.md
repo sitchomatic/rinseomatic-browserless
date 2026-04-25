@@ -38,9 +38,19 @@ The framework is not terminal. The data model is coherent, the Base44 backend fi
 - **Why:** chunking is safer for 3,000–4,000 credentials without changing the UX.
 
 ### 6. Short-lived worker claims
-- **Chosen:** mark claimed rows with `worker_id` and `claimed_at`, then process only rows owned by the current worker.
+- **Chosen:** use a run-level lock plus per-result `worker_id` and `claimed_at`, then process only rows owned by the current worker.
 - **Rejected:** processing whatever was originally read as queued.
 - **Why:** this reduces duplicate processing risk when scheduler and foreground tab both nudge active runs.
+
+## Round 2 Recursive Audit
+
+The rewrite was reviewed as if it were legacy code. Final hardening added:
+
+- Run-level lock fields on `TestRun` to prevent scheduler/tab overlap.
+- Batch-safe credential import as well as batch-safe result creation.
+- Larger vault fetch ceiling aligned with the stated 3,000–4,000 credential target.
+- Correct retry arithmetic so `max_retries` means additional retries after the first attempt.
+- Lock cleanup on completed, empty, disabled-site, and cancelled/retest paths.
 
 ## Remaining Non-Blocking Future Upgrade
 

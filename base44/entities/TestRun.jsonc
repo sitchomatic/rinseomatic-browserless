@@ -58,6 +58,15 @@
     "elapsed_ms": {
       "type": "number",
       "default": 0
+    },
+    "worker_id": {
+      "type": "string",
+      "description": "Short-lived run-level lock token used by runWorker"
+    },
+    "claimed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the current run-level worker lock was acquired"
     }
   },
   "required": [

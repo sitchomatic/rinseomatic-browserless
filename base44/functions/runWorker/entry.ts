@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     if (!run_id) return Response.json({ error: 'Missing run_id' }, { status: 400 });
 
     const runs = await base44.asServiceRole.entities.TestRun.filter({ id: run_id });
-    const run = runs[0];
+    let run = runs[0];
     if (!run) return Response.json({ error: 'Run not found' }, { status: 404 });
     if (user && user.role !== 'admin' && run.created_by !== user.email) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
@@ -59,10 +59,28 @@ Deno.serve(async (req) => {
       return Response.json({ done: true, status: run.status });
     }
 
+    const workerId = crypto.randomUUID();
+    const claimTime = new Date().toISOString();
+    const lockAgeMs = run.claimed_at ? Date.now() - new Date(run.claimed_at).getTime() : Infinity;
+    if (run.worker_id && lockAgeMs < 2 * 60 * 1000) {
+      return Response.json({ done: false, skipped: true, reason: 'Run is already being processed' });
+    }
+    await base44.asServiceRole.entities.TestRun.update(run_id, { worker_id: workerId, claimed_at: claimTime });
+    run = (await base44.asServiceRole.entities.TestRun.filter({ id: run_id }))[0];
+    if (run.worker_id !== workerId) {
+      return Response.json({ done: false, skipped: true, reason: 'Run lock was taken by another worker' });
+    }
+
     const sites = await base44.asServiceRole.entities.Site.filter({ key: run.site_key });
     const site = sites[0];
-    if (!site) return Response.json({ error: `Site ${run.site_key} missing` }, { status: 404 });
-    if (site.enabled === false) return Response.json({ error: `Site ${run.site_key} is disabled` }, { status: 400 });
+    if (!site) {
+      await base44.asServiceRole.entities.TestRun.update(run_id, { worker_id: null, claimed_at: null });
+      return Response.json({ error: `Site ${run.site_key} missing` }, { status: 404 });
+    }
+    if (site.enabled === false) {
+      await base44.asServiceRole.entities.TestRun.update(run_id, { worker_id: null, claimed_at: null });
+      return Response.json({ error: `Site ${run.site_key} is disabled` }, { status: 400 });
+    }
 
     if (run.status === 'running' && run.updated_date) {
       const staleMs = Date.now() - new Date(run.updated_date).getTime();
@@ -74,8 +92,6 @@ Deno.serve(async (req) => {
 
     // Cap concurrency at 2 to avoid function timeouts with Playwright sessions
     const concurrency = Math.max(1, Math.min(2, run.concurrency || 2));
-    const workerId = crypto.randomUUID();
-    const claimTime = new Date().toISOString();
 
     const queued = await base44.asServiceRole.entities.TestResult.filter(
       { run_id, status: 'queued' },
@@ -101,8 +117,11 @@ Deno.serve(async (req) => {
           working_count: counts.working,
           failed_count: counts.failed,
           error_count: counts.errored,
+          worker_id: null,
+          claimed_at: null,
         });
       }
+      await base44.asServiceRole.entities.TestRun.update(run_id, { worker_id: null, claimed_at: null });
       return Response.json({ done: true, processed: 0 });
     }
 
@@ -136,8 +155,8 @@ Deno.serve(async (req) => {
 
     await Promise.all(claimed.map(async (r, i) => {
       const o = outcomes[i];
-      const attempts = (r.attempts || 0) + 1;
-      const shouldRetry = o.status === 'error' && attempts <= maxRetries;
+      const attempts = r.attempts || 1;
+      const shouldRetry = o.status === 'error' && attempts < maxRetries + 1;
       const finalStatus = shouldRetry ? 'queued' : o.status;
 
       if (!shouldRetry) {
@@ -207,6 +226,8 @@ Deno.serve(async (req) => {
         ended_at: new Date().toISOString(),
         elapsed_ms: run.started_at ? Date.now() - new Date(run.started_at).getTime() : Date.now() - new Date(run.created_date).getTime(),
       } : {}),
+      worker_id: null,
+      claimed_at: null,
     });
 
     return Response.json({ done: isDone, processed: claimed.length });

@@ -70,7 +70,7 @@ export default function RunDetail() {
 
   const cancelMut = useMutation({
     mutationFn: async () => {
-      await base44.entities.TestRun.update(id, { status: "cancelled", ended_at: new Date().toISOString(), pending_count: 0 });
+      await base44.entities.TestRun.update(id, { status: "cancelled", ended_at: new Date().toISOString(), pending_count: 0, worker_id: null, claimed_at: null });
       const pending = results.filter((r) => r.status === "queued" || r.status === "running");
       await Promise.all(pending.map((r) => base44.entities.TestResult.update(r.id, { status: "error", error_message: "Cancelled" })));
     },
@@ -91,6 +91,8 @@ export default function RunDetail() {
         failed_count: 0,
         error_count: 0,
         ended_at: null,
+        worker_id: null,
+        claimed_at: null,
       });
     },
     onSuccess: () => {

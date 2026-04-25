@@ -38,7 +38,7 @@ export default function Credentials() {
 
   const { data: items = [], isLoading: itemsLoading } = useQuery({
     queryKey: ["credentials"],
-    queryFn: () => base44.entities.Credential.list("-created_date", 2000),
+    queryFn: () => base44.entities.Credential.list("-created_date", 5000),
     staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
   });
@@ -48,7 +48,7 @@ export default function Credentials() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["credentials"] }); toast.success("Credential added"); },
   });
   const bulkMut = useMutation({
-    mutationFn: (rows) => base44.entities.Credential.bulkCreate(rows),
+    mutationFn: (rows) => runInBatches(rows, 500, (chunk) => base44.entities.Credential.bulkCreate(chunk)),
     onSuccess: (_, rows) => { qc.invalidateQueries({ queryKey: ["credentials"] }); toast.success(`Imported ${rows.length}`); },
   });
   const deleteMut = useMutation({
