@@ -37,10 +37,11 @@ Implemented core logic rewrites:
 - `lib/credentialMetrics.js`: single-pass vault analysis.
 - `lib/dashboardMetrics.js`: single-pass dashboard rollups.
 - `lib/runPlanning.js`: shared run limits, normalization, and counting.
-- `functions/runWorker`: reduced duplicate entity reads and replaced repeated full-result recounting with incremental run progress updates.
+- `functions/runWorker`: reduced duplicate entity reads, added short-lived worker claims, and replaced repeated full-result recounting with incremental run progress updates.
 - `pages/RunDetail`: summary-driven progress, filtering, and real-time run/result subscriptions instead of constant polling.
 - `pages/Dashboard`: centralized dashboard model.
 - `components/runs/NewRunDialog`: aligned UI with backend execution limits.
+- `pages/Credentials`: batch-safe run result creation for 3,000–4,000 credential vaults.
 
 ## Step 4 — Ambiguity Report
 

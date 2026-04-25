@@ -1,40 +1,47 @@
 # Architecture Decision Log
 
-## Implemented Safe Refactors
+## North Star
 
-### Credential page aggregation
-- Current issue: Filtering, site counts, selected credential lookup, and default run-site selection each looped through the same credential collection separately.
-- Implemented fix: Centralized these calculations into one O(n) analyzer in `lib/credentialMetrics.js`.
-- Expected gain: Lower render CPU cost as credential volume grows, simpler reasoning, fewer duplicated rules.
+This app is a credential-testing operations console: configure login targets, manage site-scoped credentials, run controlled browser verification batches, and expose fast, trustworthy status intelligence to the operator.
 
-### Query behavior tuning
-- Current issue: Reference data and credential lists refetched more often than necessary while users were navigating dialogs and tabs.
-- Implemented fix: Added practical stale/cache windows for sites and credentials.
-- Expected gain: Fewer redundant reads, smoother UI transitions, lower backend pressure.
+## Binary Verdict
 
-## High-Level Architectural Shifts Requiring Approval
+**Chosen path: Alpha — Optimize.**
 
-### 1. Server-side pagination / virtualization
-- Current issue: The vault currently loads and renders up to thousands of credentials at once.
-- Proposed intelligence fix: Add paginated entity reads plus a virtualized table-style renderer.
-- Expected gain: Large vaults remain responsive at 10k+ records instead of scaling render work with total rows.
+The framework is not terminal. The data model is coherent, the Base44 backend fits the workload, and the React shell is maintainable. The defects were concentrated in repeated aggregation, over-polling, misleading concurrency controls, and batch robustness — all solvable without discarding the app.
 
-### 2. Durable worker claiming model
-- Current issue: `runWorker` claims queued records by status, which is practical but can still double-work under simultaneous scheduler/UI triggers.
-- Proposed intelligence fix: Add explicit claim tokens/leases to `TestResult` records before testing.
-- Expected gain: Stronger concurrency correctness and fewer wasted Browserless sessions.
+## Completed Decisions
 
-### 3. Run result rollups as write-time projections
-- Current issue: Run progress is recomputed by scanning result records after worker batches.
-- Proposed intelligence fix: Maintain atomic rollup counters per status as results transition.
-- Expected gain: Near O(1) progress updates for very large runs.
+### 1. Keep client-side credential analysis
+- **Chosen:** memoized client-side filtering and counts.
+- **Rejected:** server-side pagination.
+- **Why:** expected vault size is 3,000–4,000 credentials, which is comfortably handled by one memoized pass in-browser and avoids unnecessary UX complexity.
 
-### 4. Import pipeline validation layer
-- Current issue: CSV import accepts valid username/password rows but does not provide duplicate detection or pre-import quality feedback.
-- Proposed intelligence fix: Add a preview/validation step for duplicates, missing fields, invalid site mapping, and estimated run size.
-- Expected gain: Fewer bad imports and less cleanup work for users.
+### 2. Cap browser concurrency at 2
+- **Chosen:** enforce and display 1–2 browser sessions.
+- **Rejected:** exposing higher values in the UI while silently capping in the worker.
+- **Why:** honesty in controls prevents bad operator expectations and avoids Browserless timeout pressure.
 
-### 5. Observability dashboard
-- Current issue: Action logs exist but are not surfaced as operational trends.
-- Proposed intelligence fix: Add worker health, proxy fallback rate, Browserless error categories, and retry-rate charts.
-- Expected gain: Faster diagnosis of failing sites/proxies and better operational decisions.
+### 3. Incremental run progress
+- **Chosen:** update run counters from processed batch deltas.
+- **Rejected:** recount every result row after every worker pulse.
+- **Why:** batch deltas are O(batch size); full recounts are O(run size) and become wasteful during every worker cycle.
+
+### 4. Live Run Detail updates
+- **Chosen:** entity subscriptions that patch cached result rows locally.
+- **Rejected:** fixed 5-second polling.
+- **Why:** subscriptions reduce backend reads and make the operator UI feel immediate.
+
+### 5. Batch-safe result creation
+- **Chosen:** create queued result rows in chunks of 500.
+- **Rejected:** one huge bulk create for the full run.
+- **Why:** chunking is safer for 3,000–4,000 credentials without changing the UX.
+
+### 6. Short-lived worker claims
+- **Chosen:** mark claimed rows with `worker_id` and `claimed_at`, then process only rows owned by the current worker.
+- **Rejected:** processing whatever was originally read as queued.
+- **Why:** this reduces duplicate processing risk when scheduler and foreground tab both nudge active runs.
+
+## Remaining Non-Blocking Future Upgrade
+
+If the app later exceeds 10,000+ credentials, revisit server-side filtering and virtualized table rendering. For the stated expected scale, that would be unnecessary complexity today.

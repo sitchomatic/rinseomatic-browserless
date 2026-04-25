@@ -47,9 +47,17 @@ export default function RunDetail() {
     });
 
     const unsubscribeResults = base44.entities.TestResult.subscribe((event) => {
-      if (event.type === "delete" || event.data?.run_id === id) {
-        qc.invalidateQueries({ queryKey: ["test-results", id] });
+      if (event.type === "delete") {
+        qc.setQueryData(["test-results", id], (current = []) => current.filter((result) => result.id !== event.id));
+        return;
       }
+      if (event.data?.run_id !== id) return;
+      qc.setQueryData(["test-results", id], (current = []) => {
+        const exists = current.some((result) => result.id === event.id);
+        if (event.type === "create" && !exists) return [event.data, ...current];
+        if (event.type === "update") return current.map((result) => result.id === event.id ? event.data : result);
+        return current;
+      });
     });
 
     return () => {

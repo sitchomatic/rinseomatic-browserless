@@ -1,10 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-async function testOne(base44, site, result) {
+async function testOne(base44, site, result, credential) {
   const started = Date.now();
   try {
-    const creds = await base44.asServiceRole.entities.Credential.filter({ id: result.credential_id });
-    const credential = creds[0];
     if (!credential) {
       return { status: 'error', error_message: 'Credential deleted', elapsed_ms: 0 };
     }
@@ -70,12 +68,14 @@ Deno.serve(async (req) => {
       const staleMs = Date.now() - new Date(run.updated_date).getTime();
       if (staleMs > 15 * 60 * 1000) {
         const stale = await base44.asServiceRole.entities.TestResult.filter({ run_id, status: 'running' }, '-created_date', 5000);
-        await Promise.all(stale.map((r) => base44.asServiceRole.entities.TestResult.update(r.id, { status: 'queued' })));
+        await Promise.all(stale.map((r) => base44.asServiceRole.entities.TestResult.update(r.id, { status: 'queued', worker_id: null, claimed_at: null })));
       }
     }
 
     // Cap concurrency at 2 to avoid function timeouts with Playwright sessions
     const concurrency = Math.max(1, Math.min(2, run.concurrency || 2));
+    const workerId = crypto.randomUUID();
+    const claimTime = new Date().toISOString();
 
     const queued = await base44.asServiceRole.entities.TestResult.filter(
       { run_id, status: 'queued' },
@@ -118,18 +118,23 @@ Deno.serve(async (req) => {
     await Promise.all(queued.map((r) =>
       base44.asServiceRole.entities.TestResult.update(r.id, {
         status: 'running',
+        worker_id: workerId,
+        claimed_at: claimTime,
         attempts: (r.attempts || 0) + 1,
       })
     ));
 
+    const claimed = await base44.asServiceRole.entities.TestResult.filter({ run_id, status: 'running', worker_id: workerId }, 'created_date', concurrency);
+    const credentials = await Promise.all(claimed.map((r) => base44.asServiceRole.entities.Credential.filter({ id: r.credential_id }).then((rows) => rows[0] || null)));
+
     // Execute tests in parallel (capped at 2)
-    const outcomes = await Promise.all(queued.map((r) => testOne(base44, site, r)));
+    const outcomes = await Promise.all(claimed.map((r, index) => testOne(base44, site, r, credentials[index])));
 
     // Persist results + update run progress incrementally.
     const maxRetries = run.max_retries ?? 1;
     const progressDelta = { pending: 0, working: 0, failed: 0, errored: 0 };
 
-    await Promise.all(queued.map(async (r, i) => {
+    await Promise.all(claimed.map(async (r, i) => {
       const o = outcomes[i];
       const attempts = (r.attempts || 0) + 1;
       const shouldRetry = o.status === 'error' && attempts <= maxRetries;
@@ -160,6 +165,8 @@ Deno.serve(async (req) => {
         error_message: o.error_message || null,
         elapsed_ms: o.elapsed_ms || 0,
         tested_at: new Date().toISOString(),
+        worker_id: null,
+        claimed_at: null,
       });
 
       // Mirror terminal result back to the Credential record
@@ -187,14 +194,14 @@ Deno.serve(async (req) => {
       }
     }));
 
-    const pendingCount = Math.max(0, (run.pending_count || queued.length) + progressDelta.pending);
+    const pendingCount = Math.max(0, (run.pending_count ?? queued.length) + progressDelta.pending);
     const isDone = pendingCount === 0;
 
     await base44.asServiceRole.entities.TestRun.update(run_id, {
       pending_count: pendingCount,
-      working_count: (run.working_count || 0) + progressDelta.working,
-      failed_count: (run.failed_count || 0) + progressDelta.failed,
-      error_count: (run.error_count || 0) + progressDelta.errored,
+      working_count: (run.working_count ?? 0) + progressDelta.working,
+      failed_count: (run.failed_count ?? 0) + progressDelta.failed,
+      error_count: (run.error_count ?? 0) + progressDelta.errored,
       ...(isDone ? {
         status: 'completed',
         ended_at: new Date().toISOString(),
@@ -202,7 +209,7 @@ Deno.serve(async (req) => {
       } : {}),
     });
 
-    return Response.json({ done: isDone, processed: queued.length });
+    return Response.json({ done: isDone, processed: claimed.length });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

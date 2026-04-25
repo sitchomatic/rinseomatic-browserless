@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { analyzeCredentials } from "@/lib/credentialMetrics";
 import { credentialsForRun, normalizeRunForm } from "@/lib/runPlanning";
+import { runInBatches } from "@/lib/batches";
 
 export default function Credentials() {
   const qc = useQueryClient();
@@ -112,15 +113,15 @@ export default function Credentials() {
       pending_count: creds.length,
     });
 
-    await base44.entities.TestResult.bulkCreate(
-      creds.map((c) => ({
+    await runInBatches(creds, 500, (chunk) => base44.entities.TestResult.bulkCreate(
+      chunk.map((c) => ({
         run_id: run.id,
         credential_id: c.id,
         site_key: c.site_key,
         username: c.username,
         status: "queued",
       }))
-    );
+    ));
     toast.success(`Run started · ${creds.length} credentials`);
     navigate(`/runs/${run.id}`);
   };

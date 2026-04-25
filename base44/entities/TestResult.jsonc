@@ -25,6 +25,14 @@
       ],
       "default": "queued"
     },
+    "worker_id": {
+      "type": "string",
+      "description": "Short-lived claim token used by runWorker to avoid duplicate processing"
+    },
+    "claimed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "attempts": {
       "type": "number",
       "default": 0
