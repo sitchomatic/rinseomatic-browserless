@@ -2,6 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { BarChart, Bar, Cell, PieChart, Pie, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Activity, CheckCircle2 } from "lucide-react";
+import MeasuredChartFrame from "@/components/dashboard/MeasuredChartFrame";
 
 const COLORS = ["hsl(var(--success))", "hsl(var(--destructive))"];
 
@@ -29,8 +30,8 @@ export default function DashboardVisualSummary({ totals, siteStats, activeRuns }
           </div>
           <CheckCircle2 className="h-4 w-4 text-emerald-300" />
         </div>
-        <div className="h-48 relative">
-          <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
+        <MeasuredChartFrame>
+          <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie data={pieData} innerRadius={62} outerRadius={82} paddingAngle={4} dataKey="value" animationDuration={700}>
                 {pieData.map((entry, index) => <Cell key={entry.name} fill={COLORS[index]} />)}
@@ -42,7 +43,7 @@ export default function DashboardVisualSummary({ totals, siteStats, activeRuns }
             <div className="text-3xl font-semibold tabular-nums">{successRate}%</div>
             <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">working</div>
           </div>
-        </div>
+        </MeasuredChartFrame>
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} className="rounded-2xl border border-border bg-card/80 p-5 shadow-sm min-w-0">
@@ -56,8 +57,8 @@ export default function DashboardVisualSummary({ totals, siteStats, activeRuns }
           </div>
         </div>
         <div className="grid lg:grid-cols-[1fr_260px] gap-5">
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
+          <MeasuredChartFrame>
+            <ResponsiveContainer width="100%" height="100%">
               <BarChart data={barData} margin={{ left: -24, right: 8, top: 8, bottom: 0 }}>
                 <XAxis dataKey="name" hide />
                 <YAxis domain={[0, 100]} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
@@ -65,7 +66,7 @@ export default function DashboardVisualSummary({ totals, siteStats, activeRuns }
                 <Bar dataKey="success" radius={[6, 6, 0, 0]} fill="hsl(var(--primary))" animationDuration={800} />
               </BarChart>
             </ResponsiveContainer>
-          </div>
+          </MeasuredChartFrame>
           <div className="rounded-xl border border-border/70 bg-secondary/25 divide-y divide-border/60 overflow-hidden">
             {activeRuns.length === 0 ? (
               <div className="p-4 text-xs text-muted-foreground">No active runs right now.</div>
