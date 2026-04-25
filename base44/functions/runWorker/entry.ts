@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Claim batch atomically by marking them 'running'
+    // Claim this batch before launching browser sessions.
     await Promise.all(queued.map((r) =>
       base44.asServiceRole.entities.TestResult.update(r.id, {
         status: 'running',

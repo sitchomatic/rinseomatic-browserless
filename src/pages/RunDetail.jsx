@@ -22,14 +22,17 @@ export default function RunDetail() {
   const { data: run, isLoading: runLoading, isError: runError } = useQuery({
     queryKey: ["test-run", id],
     queryFn: async () => (await base44.entities.TestRun.filter({ id }))[0] || null,
-    refetchInterval: 2000,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === "queued" || status === "running" ? 5000 : false;
+    },
     enabled: !!id,
   });
 
   const { data: results = [] } = useQuery({
     queryKey: ["test-results", id],
     queryFn: () => base44.entities.TestResult.filter({ run_id: id }, "-created_date", 5000),
-    refetchInterval: 2000,
+    refetchInterval: run?.status === "queued" || run?.status === "running" ? 5000 : false,
     enabled: !!id,
   });
 
@@ -43,9 +46,9 @@ export default function RunDetail() {
 
   const cancelMut = useMutation({
     mutationFn: async () => {
-      await base44.entities.TestRun.update(id, { status: "cancelled", ended_at: new Date().toISOString() });
-      const queued = await base44.entities.TestResult.filter({ run_id: id, status: "queued" }, "-created_date", 5000);
-      await Promise.all(queued.map((r) => base44.entities.TestResult.update(r.id, { status: "error", error_message: "Cancelled" })));
+      await base44.entities.TestRun.update(id, { status: "cancelled", ended_at: new Date().toISOString(), pending_count: 0 });
+      const pending = results.filter((r) => r.status === "queued" || r.status === "running");
+      await Promise.all(pending.map((r) => base44.entities.TestResult.update(r.id, { status: "error", error_message: "Cancelled" })));
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["test-run", id] });
@@ -57,12 +60,13 @@ export default function RunDetail() {
   const retestFailedMut = useMutation({
     mutationFn: async () => {
       const failed = results.filter((r) => r.status === "failed" || r.status === "error");
-      await Promise.all(failed.map((r) => base44.entities.TestResult.update(r.id, { status: "queued", error_message: null })));
+      await Promise.all(failed.map((r) => base44.entities.TestResult.update(r.id, { status: "queued", error_message: null, final_url: null, success_marker_found: null })));
       await base44.entities.TestRun.update(id, {
-        status: "running",
-        pending_count: (run.pending_count || 0) + failed.length,
+        status: "queued",
+        pending_count: failed.length,
         failed_count: 0,
         error_count: 0,
+        ended_at: null,
       });
     },
     onSuccess: () => {
@@ -96,9 +100,11 @@ export default function RunDetail() {
     );
   }
 
-  const pct = run.total_count ? Math.round(((run.total_count - (run.pending_count || 0)) / run.total_count) * 100) : 0;
+  const pendingResults = results.filter((r) => r.status === "queued" || r.status === "running");
+  const doneCount = Math.max(0, (run.total_count || results.length) - pendingResults.length);
+  const pct = run.total_count ? Math.round((doneCount / run.total_count) * 100) : 0;
 
-  const filtered = tab === "all" ? results : results.filter((r) => r.status === tab);
+  const filtered = tab === "all" ? results : tab === "queued" ? pendingResults : results.filter((r) => r.status === tab);
 
   return (
     <div className="px-6 md:px-10 py-8 max-w-[1400px] mx-auto">
@@ -128,7 +134,7 @@ export default function RunDetail() {
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
-        <Tile label="Progress" icon={Loader2} spin={run.status === "running"} value={`${pct}%`} sub={`${run.total_count - (run.pending_count || 0)}/${run.total_count}`} />
+        <Tile label="Progress" icon={Loader2} spin={run.status === "running" || run.status === "queued"} value={`${pct}%`} sub={`${doneCount}/${run.total_count}`} />
         <Tile label="Working" icon={CheckCircle2} accent="text-emerald-300" value={run.working_count || 0} />
         <Tile label="Failed" icon={XCircle} accent="text-rose-300" value={run.failed_count || 0} />
         <Tile label="Errored" icon={AlertTriangle} accent="text-amber-300" value={run.error_count || 0} />
@@ -145,7 +151,7 @@ export default function RunDetail() {
           <TabsTrigger value="working">Working <span className="ml-2 text-emerald-300 font-mono">{results.filter((r) => r.status === "working").length}</span></TabsTrigger>
           <TabsTrigger value="failed">Failed <span className="ml-2 text-rose-300 font-mono">{results.filter((r) => r.status === "failed").length}</span></TabsTrigger>
           <TabsTrigger value="error">Error <span className="ml-2 text-amber-300 font-mono">{results.filter((r) => r.status === "error").length}</span></TabsTrigger>
-          <TabsTrigger value="queued">Queued <span className="ml-2 text-muted-foreground font-mono">{results.filter((r) => r.status === "queued" || r.status === "running").length}</span></TabsTrigger>
+          <TabsTrigger value="queued">Pending <span className="ml-2 text-muted-foreground font-mono">{pendingResults.length}</span></TabsTrigger>
         </TabsList>
         <TabsContent value={tab}>
           <ResultsTable results={filtered} />

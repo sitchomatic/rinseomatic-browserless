@@ -17,8 +17,14 @@ Deno.serve(async (req) => {
     if (!apiKey) return Response.json({ error: 'BROWSERLESS_API_KEY not set' }, { status: 500 });
 
     const { proxy_country } = body;
-    const proxyParams = proxy_country ? `&proxy=residential&proxyCountry=${proxy_country.toLowerCase()}&proxySticky` : '';
-    const browserlessUrl = `https://production-sfo.browserless.io/function?token=${apiKey}&timeout=60000${proxyParams}`;
+    const params = new URLSearchParams({ token: apiKey, timeout: '60000' });
+    if (proxy_country) {
+      params.set('proxy', 'residential');
+      params.set('proxyCountry', String(proxy_country).trim().toLowerCase());
+      params.set('proxySticky', 'true');
+      params.set('proxyLocaleMatch', '1');
+    }
+    const browserlessUrl = `https://production-sfo.browserless.io/function?${params.toString()}`;
 
     const fnBody = `
       export default async ({ page }) => {

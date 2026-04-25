@@ -11,7 +11,7 @@ const NAV = [
 ];
 
 const TITLES = {
-  "/": "Credentials · Credential Tester",
+  "/": "Dashboard · Credential Tester",
   "/credentials": "Credentials · Credential Tester",
   "/runs": "Test runs · Credential Tester",
   "/settings": "Settings · Credential Tester",
