@@ -12,13 +12,13 @@ function classify(site, finalUrl, markerFound) {
   return 'working';
 }
 
-function buildBrowserlessUrl(apiKey, site, sessionTimeout) {
+function buildBrowserlessUrl(apiKey, site, sessionTimeout, proxyTypeOverride) {
   const params = new URLSearchParams();
   params.set('token', apiKey);
   params.set('timeout', String(sessionTimeout));
 
-  // Proxy: older saved Site records may not contain these newer fields yet.
-  const proxyType = site.proxy_type || 'residential';
+  // Default to Australian residential proxy; callers can force a no-proxy fallback.
+  const proxyType = proxyTypeOverride || site.proxy_type || 'residential';
   if (proxyType === 'residential') {
     params.set('proxy', 'residential');
     params.set('proxyCountry', String(site.proxy_country || 'au').trim().toLowerCase());
@@ -167,7 +167,12 @@ Deno.serve(async (req) => {
     let workingPassword = null;
 
     for (const pwd of passwords) {
-      const r = await attemptLogin({ browserlessUrl, site, username, password: pwd });
+      let r = await attemptLogin({ browserlessUrl, site, username, password: pwd });
+      if (r.error && (site.proxy_type || 'residential') === 'residential') {
+        const fallbackUrl = buildBrowserlessUrl(apiKey, site, sessionTimeout, 'none');
+        const fallback = await attemptLogin({ browserlessUrl: fallbackUrl, site, username, password: pwd });
+        if (!fallback.error) r = { ...fallback, proxy_fallback_used: true };
+      }
       if (r.error) {
         return Response.json({ status: 'error', error_message: r.error, elapsed_ms: Date.now() - started }, { status: 500 });
       }
@@ -185,6 +190,7 @@ Deno.serve(async (req) => {
       success_marker_found: lastResult.markerFound,
       working_password: workingPassword && workingPassword !== password ? workingPassword : undefined,
       tried: passwords.length,
+      proxy_fallback_used: !!lastResult.proxy_fallback_used,
       elapsed_ms: Date.now() - started,
     });
 

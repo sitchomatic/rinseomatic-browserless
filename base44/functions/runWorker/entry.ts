@@ -24,6 +24,7 @@ async function testOne(base44, site, result) {
       success_marker_found: data.success_marker_found,
       error_message: data.error_message,
       working_password: data.working_password,
+      proxy_fallback_used: !!data.proxy_fallback_used,
       elapsed_ms: data.elapsed_ms ?? (Date.now() - started),
     };
   } catch (e) {
@@ -127,6 +128,15 @@ Deno.serve(async (req) => {
       const attempts = (r.attempts || 0) + 1;
       const shouldRetry = o.status === 'error' && attempts <= maxRetries;
       const finalStatus = shouldRetry ? 'queued' : o.status;
+      await base44.asServiceRole.entities.ActionLog.create({
+        session_id: run_id,
+        level: finalStatus === 'working' ? 'success' : finalStatus === 'queued' ? 'warn' : 'error',
+        category: 'auth',
+        site: run.site_key,
+        message: `${r.username || 'credential'} → ${finalStatus}${o.proxy_fallback_used ? ' (proxy fallback)' : ''}${o.error_message ? `: ${o.error_message}` : ''}`,
+        delta_ms: o.elapsed_ms || 0,
+        timestamp: new Date().toISOString(),
+      });
 
       await base44.asServiceRole.entities.TestResult.update(r.id, {
         status: finalStatus,
