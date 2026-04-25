@@ -10,6 +10,7 @@ import StatusPill from "@/components/shared/StatusPill";
 import SiteChip from "@/components/shared/SiteChip";
 import ResultsTable from "@/components/runs/ResultsTable";
 import { formatMs } from "@/lib/sites";
+import { runProgress, summarizeResults } from "@/lib/runMetrics";
 import { toast } from "sonner";
 import { useRunWorker } from "@/lib/useRunWorker";
 
@@ -76,6 +77,14 @@ export default function RunDetail() {
     },
   });
 
+  const summary = React.useMemo(() => summarizeResults(results), [results]);
+  const progress = React.useMemo(() => runProgress(run, results), [run, results]);
+  const pendingResults = React.useMemo(() => results.filter((r) => r.status === "queued" || r.status === "running"), [results]);
+  const filtered = React.useMemo(
+    () => tab === "all" ? results : tab === "queued" ? pendingResults : results.filter((r) => r.status === tab),
+    [tab, results, pendingResults]
+  );
+
   if (runLoading) {
     return (
       <div className="px-6 md:px-10 py-8 max-w-[1400px] mx-auto">
@@ -99,12 +108,6 @@ export default function RunDetail() {
       </div>
     );
   }
-
-  const pendingResults = results.filter((r) => r.status === "queued" || r.status === "running");
-  const doneCount = Math.max(0, (run.total_count || results.length) - pendingResults.length);
-  const pct = run.total_count ? Math.round((doneCount / run.total_count) * 100) : 0;
-
-  const filtered = tab === "all" ? results : tab === "queued" ? pendingResults : results.filter((r) => r.status === tab);
 
   return (
     <div className="px-6 md:px-10 py-8 max-w-[1400px] mx-auto">
@@ -134,24 +137,24 @@ export default function RunDetail() {
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
-        <Tile label="Progress" icon={Loader2} spin={run.status === "running" || run.status === "queued"} value={`${pct}%`} sub={`${doneCount}/${run.total_count}`} />
-        <Tile label="Working" icon={CheckCircle2} accent="text-emerald-300" value={run.working_count || 0} />
-        <Tile label="Failed" icon={XCircle} accent="text-rose-300" value={run.failed_count || 0} />
-        <Tile label="Errored" icon={AlertTriangle} accent="text-amber-300" value={run.error_count || 0} />
+        <Tile label="Progress" icon={Loader2} spin={run.status === "running" || run.status === "queued"} value={`${progress.percent}%`} sub={`${progress.done}/${progress.total}`} />
+        <Tile label="Working" icon={CheckCircle2} accent="text-emerald-300" value={summary.working} />
+        <Tile label="Failed" icon={XCircle} accent="text-rose-300" value={summary.failed} />
+        <Tile label="Errored" icon={AlertTriangle} accent="text-amber-300" value={summary.error} />
         <Tile label="Elapsed" value={formatMs(run.elapsed_ms)} sub={run.status} />
       </div>
 
       <div className="h-1.5 bg-secondary rounded-full overflow-hidden mb-6">
-        <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+        <div className="h-full bg-primary transition-all" style={{ width: `${progress.percent}%` }} />
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="bg-card border border-border mb-4">
           <TabsTrigger value="all">All <span className="ml-2 text-muted-foreground font-mono">{results.length}</span></TabsTrigger>
-          <TabsTrigger value="working">Working <span className="ml-2 text-emerald-300 font-mono">{results.filter((r) => r.status === "working").length}</span></TabsTrigger>
-          <TabsTrigger value="failed">Failed <span className="ml-2 text-rose-300 font-mono">{results.filter((r) => r.status === "failed").length}</span></TabsTrigger>
-          <TabsTrigger value="error">Error <span className="ml-2 text-amber-300 font-mono">{results.filter((r) => r.status === "error").length}</span></TabsTrigger>
-          <TabsTrigger value="queued">Pending <span className="ml-2 text-muted-foreground font-mono">{pendingResults.length}</span></TabsTrigger>
+          <TabsTrigger value="working">Working <span className="ml-2 text-emerald-300 font-mono">{summary.working}</span></TabsTrigger>
+          <TabsTrigger value="failed">Failed <span className="ml-2 text-rose-300 font-mono">{summary.failed}</span></TabsTrigger>
+          <TabsTrigger value="error">Error <span className="ml-2 text-amber-300 font-mono">{summary.error}</span></TabsTrigger>
+          <TabsTrigger value="queued">Pending <span className="ml-2 text-muted-foreground font-mono">{summary.pending}</span></TabsTrigger>
         </TabsList>
         <TabsContent value={tab}>
           <ResultsTable results={filtered} />

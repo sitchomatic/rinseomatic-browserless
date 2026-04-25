@@ -86,17 +86,20 @@ Deno.serve(async (req) => {
       const all = await base44.asServiceRole.entities.TestResult.filter({ run_id }, '-created_date', 5000);
       const stillRunning = all.some((r) => r.status === 'running' || r.status === 'queued');
       if (!stillRunning) {
-        const working = all.filter((r) => r.status === 'working').length;
-        const failed = all.filter((r) => r.status === 'failed').length;
-        const errored = all.filter((r) => r.status === 'error').length;
+        const counts = all.reduce((acc, r) => {
+          if (r.status === 'working') acc.working += 1;
+          if (r.status === 'failed') acc.failed += 1;
+          if (r.status === 'error') acc.errored += 1;
+          return acc;
+        }, { working: 0, failed: 0, errored: 0 });
         await base44.asServiceRole.entities.TestRun.update(run_id, {
           status: 'completed',
           ended_at: new Date().toISOString(),
           elapsed_ms: run.started_at ? Date.now() - new Date(run.started_at).getTime() : Date.now() - new Date(run.created_date).getTime(),
           pending_count: 0,
-          working_count: working,
-          failed_count: failed,
-          error_count: errored,
+          working_count: counts.working,
+          failed_count: counts.failed,
+          error_count: counts.errored,
         });
       }
       return Response.json({ done: true, processed: 0 });
@@ -175,17 +178,20 @@ Deno.serve(async (req) => {
 
     // Recount and update run progress
     const all = await base44.asServiceRole.entities.TestResult.filter({ run_id }, '-created_date', 5000);
-    const pending = all.filter((r) => r.status === 'queued' || r.status === 'running').length;
-    const working = all.filter((r) => r.status === 'working').length;
-    const failed = all.filter((r) => r.status === 'failed').length;
-    const errored = all.filter((r) => r.status === 'error').length;
-    const isDone = pending === 0;
+    const counts = all.reduce((acc, r) => {
+      if (r.status === 'queued' || r.status === 'running') acc.pending += 1;
+      if (r.status === 'working') acc.working += 1;
+      if (r.status === 'failed') acc.failed += 1;
+      if (r.status === 'error') acc.errored += 1;
+      return acc;
+    }, { pending: 0, working: 0, failed: 0, errored: 0 });
+    const isDone = counts.pending === 0;
 
     await base44.asServiceRole.entities.TestRun.update(run_id, {
-      pending_count: pending,
-      working_count: working,
-      failed_count: failed,
-      error_count: errored,
+      pending_count: counts.pending,
+      working_count: counts.working,
+      failed_count: counts.failed,
+      error_count: counts.errored,
       ...(isDone ? {
         status: 'completed',
         ended_at: new Date().toISOString(),

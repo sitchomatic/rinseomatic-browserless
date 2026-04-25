@@ -5,6 +5,7 @@ import PageHeader from "@/components/shared/PageHeader";
 import { CheckCircle2, XCircle, AlertTriangle, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatMs } from "@/lib/sites";
+import { latestCompletedRunBySite } from "@/lib/runMetrics";
 
 export default function Dashboard() {
   const { data: sites = [], isLoading: sitesLoading } = useQuery({
@@ -17,21 +18,20 @@ export default function Dashboard() {
     queryFn: () => base44.entities.TestRun.list("-created_date", 500),
   });
 
-  // For each site, find the most recent completed run
-  const siteStats = sites.map((site) => {
-    const siteRuns = runs.filter(
-      (r) => r.site_key === site.key && r.status === "completed"
-    );
-    const lastRun = siteRuns[0] || null;
-
-    return { site, lastRun };
-  });
+  const latestRunBySite = React.useMemo(() => latestCompletedRunBySite(runs), [runs]);
+  const siteStats = React.useMemo(
+    () => sites.map((site) => ({ site, lastRun: latestRunBySite.get(site.key) || null })),
+    [sites, latestRunBySite]
+  );
 
   const isLoading = sitesLoading || runsLoading;
 
-  const totalWorking = siteStats.reduce((a, s) => a + (s.lastRun?.working_count || 0), 0);
-  const totalFailed = siteStats.reduce((a, s) => a + ((s.lastRun?.failed_count || 0) + (s.lastRun?.error_count || 0)), 0);
-  const totalTested = totalWorking + totalFailed;
+  const totals = React.useMemo(() => siteStats.reduce((acc, s) => {
+    acc.working += s.lastRun?.working_count || 0;
+    acc.failed += (s.lastRun?.failed_count || 0) + (s.lastRun?.error_count || 0);
+    return acc;
+  }, { working: 0, failed: 0 }), [siteStats]);
+  const totalTested = totals.working + totals.failed;
 
   return (
     <div className="px-6 md:px-10 py-8 max-w-[1400px] mx-auto">
@@ -44,8 +44,8 @@ export default function Dashboard() {
       {/* Global summary tiles */}
       <div className="grid grid-cols-3 gap-3 mb-8">
         <SummaryTile label="Total tested" value={totalTested} icon={Clock} />
-        <SummaryTile label="Working" value={totalWorking} icon={CheckCircle2} accent="text-emerald-300" />
-        <SummaryTile label="Failed / Error" value={totalFailed} icon={XCircle} accent="text-rose-300" />
+        <SummaryTile label="Working" value={totals.working} icon={CheckCircle2} accent="text-emerald-300" />
+        <SummaryTile label="Failed / Error" value={totals.failed} icon={XCircle} accent="text-rose-300" />
       </div>
 
       {isLoading ? (

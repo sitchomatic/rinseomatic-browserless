@@ -7,6 +7,7 @@ import { Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import EmptyState from "@/components/shared/EmptyState";
+import { mapByKey } from "@/lib/runMetrics";
 
 export default function Runs() {
   const navigate = useNavigate();
@@ -20,7 +21,8 @@ export default function Runs() {
     queryKey: ["sites"],
     queryFn: () => base44.entities.Site.list("-created_date", 100),
   });
-  const siteLabel = (k) => sites.find((s) => s.key === k)?.label || k;
+  const siteByKey = React.useMemo(() => mapByKey(sites), [sites]);
+  const siteLabel = React.useCallback((k) => siteByKey.get(k)?.label || k, [siteByKey]);
 
   return (
     <div className="px-6 md:px-10 py-8 max-w-[1400px] mx-auto">

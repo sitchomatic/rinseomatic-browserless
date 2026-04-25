@@ -4,9 +4,10 @@ import { format } from "date-fns";
 import StatusPill from "@/components/shared/StatusPill";
 import SiteChip from "@/components/shared/SiteChip";
 import { formatMs } from "@/lib/sites";
+import { runProgress } from "@/lib/runMetrics";
 
 export default function RunCard({ run, siteLabel }) {
-  const pct = run.total_count ? Math.round(((run.total_count - (run.pending_count || 0)) / run.total_count) * 100) : 0;
+  const progress = runProgress(run);
   return (
     <Link to={`/runs/${run.id}`} className="block rounded-xl border border-border bg-card hover:border-primary/40 transition-colors p-5">
       <div className="flex items-start justify-between mb-3">
@@ -23,11 +24,11 @@ export default function RunCard({ run, siteLabel }) {
       </div>
 
       <div className="h-1.5 bg-secondary rounded-full overflow-hidden mb-2">
-        <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+        <div className="h-full bg-primary transition-all" style={{ width: `${progress.percent}%` }} />
       </div>
 
       <div className="flex items-center justify-between text-xs font-mono text-muted-foreground">
-        <span>{run.total_count - (run.pending_count || 0)}/{run.total_count}</span>
+        <span>{progress.done}/{progress.total}</span>
         <span className="flex items-center gap-3">
           <span className="text-emerald-300">{run.working_count || 0} ok</span>
           <span className="text-rose-300">{run.failed_count || 0} fail</span>
