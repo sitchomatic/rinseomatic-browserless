@@ -60,7 +60,15 @@ export default function Credentials() {
     n.has(id) ? n.delete(id) : n.add(id);
     return n;
   });
-  const toggleAll = () => setSelected((s) => s.size === filtered.length ? new Set() : new Set(filtered.map((c) => c.id)));
+  const toggleAll = () => setSelected((s) => {
+    const allFilteredSelected = filtered.length > 0 && filtered.every((c) => s.has(c.id));
+    if (allFilteredSelected) {
+      const next = new Set(s);
+      filtered.forEach((c) => next.delete(c.id));
+      return next;
+    }
+    return new Set([...s, ...filtered.map((c) => c.id)]);
+  });
 
   const selectedItems = items.filter((c) => selected.has(c.id));
   const runSiteKey = selectedItems[0]?.site_key;

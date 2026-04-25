@@ -3,11 +3,11 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 const DEFAULT_SITES = [
   {
     key: 'joe',
-    label: 'Joe',
-    login_url: 'https://example.com/login',
-    username_selector: "input[type='email'], input[name='username']",
-    password_selector: "input[type='password']",
-    submit_selector: "button[type='submit']",
+    label: 'Joe Fortune',
+    login_url: 'https://www.joefortunepokies.EU/login',
+    username_selector: '#username',
+    password_selector: '#password',
+    submit_selector: '#loginSubmit',
     success_selector: '.ol-alert__content.ol-alert__content--status_success',
     login_url_marker: '/login',
     wait_after_submit_ms: 3500,

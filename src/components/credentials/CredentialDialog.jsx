@@ -1,5 +1,5 @@
 import React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,7 +52,10 @@ export default function CredentialDialog({ open, onOpenChange, sites, onSubmit }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Add credential</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Add credential</DialogTitle>
+          <DialogDescription>Store one username and password for testing against the selected site.</DialogDescription>
+        </DialogHeader>
         <div className="space-y-3">
           <div className="grid gap-2">
             <Label>Site</Label>

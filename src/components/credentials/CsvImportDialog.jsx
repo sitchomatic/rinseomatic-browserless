@@ -1,5 +1,5 @@
 import React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
@@ -46,7 +46,10 @@ export default function CsvImportDialog({ open, onOpenChange, sites, onImport })
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
-        <DialogHeader><DialogTitle>Import CSV</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Import CSV</DialogTitle>
+          <DialogDescription>Upload a CSV with username and password columns, then assign all rows to one site.</DialogDescription>
+        </DialogHeader>
         <div className="space-y-4">
           <div className="grid gap-2">
             <Label>Site (applied to all rows)</Label>

@@ -37,11 +37,17 @@ Deno.serve(async (req) => {
     for (const site of sites) {
       const patch = { ...defaults };
       if (site.key === 'ignition') {
-        patch.login_url = site.login_url || 'https://www.ignitioncasino.ooo/login';
+        patch.login_url = 'https://www.ignitioncasino.ooo/login';
+        patch.username_selector = '#username';
+        patch.password_selector = '#password';
+        patch.submit_selector = '#loginSubmit';
         patch.login_url_marker = '/login';
       }
       if (site.key === 'joe') {
-        patch.login_url = site.login_url || 'https://www.joefortunepokies.EU/login';
+        patch.login_url = 'https://www.joefortunepokies.EU/login';
+        patch.username_selector = '#username';
+        patch.password_selector = '#password';
+        patch.submit_selector = '#loginSubmit';
         patch.login_url_marker = '/login';
       }
       const merged = {
@@ -49,9 +55,9 @@ Deno.serve(async (req) => {
         key: site.key,
         label: site.label,
         login_url: patch.login_url || site.login_url,
-        username_selector: site.username_selector || '#username',
-        password_selector: site.password_selector || '#password',
-        submit_selector: site.submit_selector || '#loginSubmit',
+        username_selector: patch.username_selector || site.username_selector || '#username',
+        password_selector: patch.password_selector || site.password_selector || '#password',
+        submit_selector: patch.submit_selector || site.submit_selector || '#loginSubmit',
         success_selector: site.success_selector || '.ol-alert__content.ol-alert__content--status_success',
         success_url_contains: site.success_url_contains || '',
         login_url_marker: site.login_url_marker || '/login',

@@ -13,7 +13,7 @@ export default function CredentialsTable({ items, sites, selected, onToggle, onT
     [sites]
   );
 
-  const allChecked = items.length > 0 && selected.size === items.length;
+  const allChecked = items.length > 0 && items.every((item) => selected.has(item.id));
 
   if (items.length === 0) {
     return (

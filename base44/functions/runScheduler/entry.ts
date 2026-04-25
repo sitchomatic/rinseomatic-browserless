@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-// Called by a scheduled automation every minute.
+// Called by a scheduled automation every 5 minutes.
 // Picks up any active runs and drives them forward — no open tab needed.
 Deno.serve(async (req) => {
   try {
