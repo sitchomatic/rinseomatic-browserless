@@ -1,13 +1,12 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Eye, EyeOff, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import StatusPill from "@/components/shared/StatusPill";
 import SiteChip from "@/components/shared/SiteChip";
 import { format } from "date-fns";
 
 export default function CredentialsTable({ items, sites, selected, onToggle, onToggleAll, onDelete }) {
-  const [visible, setVisible] = React.useState({});
   const siteByKey = React.useMemo(
     () => Object.fromEntries((sites || []).map((s) => [s.key, s])),
     [sites]
@@ -42,17 +41,7 @@ export default function CredentialsTable({ items, sites, selected, onToggle, onT
           >
             <Checkbox checked={selected.has(c.id)} onCheckedChange={() => onToggle(c.id)} />
             <div className="truncate font-mono text-xs">{c.username}</div>
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="truncate font-mono text-xs">
-                {visible[c.id] ? c.password : "••••••••"}
-              </span>
-              <button
-                className="text-muted-foreground hover:text-foreground"
-                onClick={() => setVisible((v) => ({ ...v, [c.id]: !v[c.id] }))}
-              >
-                {visible[c.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-              </button>
-            </div>
+            <div className="truncate font-mono text-xs text-muted-foreground">••••••••</div>
             <div><SiteChip siteKey={c.site_key} label={siteByKey[c.site_key]?.label} size="sm" /></div>
             <div><StatusPill status={c.status || "untested"} /></div>
             <div className="text-xs text-muted-foreground font-mono">

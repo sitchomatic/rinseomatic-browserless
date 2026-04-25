@@ -25,30 +25,6 @@ const DEFAULT_SITES = [
     wait_after_submit_ms: 3500,
     enabled: true,
   },
-  {
-    key: 'ppsr',
-    label: 'PPSR',
-    login_url: 'https://example.com/login',
-    username_selector: "input[type='email'], input[name='username']",
-    password_selector: "input[type='password']",
-    submit_selector: "button[type='submit']",
-    success_selector: '.ol-alert__content.ol-alert__content--status_success',
-    login_url_marker: '/login',
-    wait_after_submit_ms: 3500,
-    enabled: true,
-  },
-  {
-    key: 'double',
-    label: 'Double',
-    login_url: 'https://example.com/login',
-    username_selector: "input[type='email'], input[name='username']",
-    password_selector: "input[type='password']",
-    submit_selector: "button[type='submit']",
-    success_selector: '.ol-alert__content.ol-alert__content--status_success',
-    login_url_marker: '/login',
-    wait_after_submit_ms: 3500,
-    enabled: true,
-  },
 ];
 
 Deno.serve(async (req) => {
