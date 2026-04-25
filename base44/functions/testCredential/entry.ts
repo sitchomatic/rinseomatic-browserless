@@ -145,8 +145,15 @@ Deno.serve(async (req) => {
     const sites = await base44.asServiceRole.entities.Site.filter({ key: site_key });
     let site = sites[0];
     if (!site) return Response.json({ error: `Unknown site: ${site_key}` }, { status: 404 });
+    if (site.enabled === false) return Response.json({ error: `Site ${site_key} is disabled` }, { status: 400 });
 
-    if (custom_login_url) site = { ...site, login_url: custom_login_url };
+    if (custom_login_url) {
+      if (!/^https?:\/\//i.test(custom_login_url)) return Response.json({ error: 'Custom login URL must be a valid http(s) URL' }, { status: 400 });
+      const defaultHost = new URL(site.login_url).hostname.replace(/^www\./, '');
+      const customHost = new URL(custom_login_url).hostname.replace(/^www\./, '');
+      if (customHost !== defaultHost) return Response.json({ error: 'Custom login URL must use the configured site domain' }, { status: 400 });
+      site = { ...site, login_url: custom_login_url };
+    }
 
     const apiKey = Deno.env.get('BROWSERLESS_API_KEY');
     if (!apiKey) return Response.json({ error: 'BROWSERLESS_API_KEY not set' }, { status: 500 });

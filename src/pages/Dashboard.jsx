@@ -81,7 +81,7 @@ function SiteCard({ site, lastRun }) {
       <div className="flex items-start justify-between gap-2">
         <div>
           <div className="text-sm font-semibold">{site.label}</div>
-          <div className="text-[10px] font-mono text-muted-foreground mt-0.5">{site.login_url}</div>
+          <div className="text-[10px] font-mono text-muted-foreground mt-0.5 truncate max-w-[260px]">{site.login_url}</div>
         </div>
         {hasRun ? (
           passRate >= 80 ? (

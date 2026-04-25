@@ -27,7 +27,8 @@ async function testOne(base44, site, result) {
       elapsed_ms: data.elapsed_ms ?? (Date.now() - started),
     };
   } catch (e) {
-    const details = e?.response?.data?.error || e?.response?.data?.error_message || e?.response?.data?.message || e.message;
+    const responseData = e?.response?.data;
+    const details = responseData?.error || responseData?.error_message || responseData?.message || (responseData ? JSON.stringify(responseData).slice(0, 500) : e.message);
     return {
       status: 'error',
       error_message: details,
@@ -40,7 +41,7 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
-    // Support both authenticated (from UI) and service-role (from scheduler) calls
+    // Support both authenticated UI calls and service-role scheduler calls.
     let user = null;
     try { user = await base44.auth.me(); } catch (_) {}
 
@@ -50,6 +51,9 @@ Deno.serve(async (req) => {
     const runs = await base44.asServiceRole.entities.TestRun.filter({ id: run_id });
     const run = runs[0];
     if (!run) return Response.json({ error: 'Run not found' }, { status: 404 });
+    if (user && user.role !== 'admin' && run.created_by !== user.email) {
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     if (run.status === 'cancelled' || run.status === 'completed') {
       return Response.json({ done: true, status: run.status });
@@ -58,6 +62,15 @@ Deno.serve(async (req) => {
     const sites = await base44.asServiceRole.entities.Site.filter({ key: run.site_key });
     const site = sites[0];
     if (!site) return Response.json({ error: `Site ${run.site_key} missing` }, { status: 404 });
+    if (site.enabled === false) return Response.json({ error: `Site ${run.site_key} is disabled` }, { status: 400 });
+
+    if (run.status === 'running' && run.updated_date) {
+      const staleMs = Date.now() - new Date(run.updated_date).getTime();
+      if (staleMs > 15 * 60 * 1000) {
+        const stale = await base44.asServiceRole.entities.TestResult.filter({ run_id, status: 'running' }, '-created_date', 5000);
+        await Promise.all(stale.map((r) => base44.asServiceRole.entities.TestResult.update(r.id, { status: 'queued' })));
+      }
+    }
 
     // Cap concurrency at 2 to avoid function timeouts with Playwright sessions
     const concurrency = Math.max(1, Math.min(2, run.concurrency || 2));
@@ -78,7 +91,7 @@ Deno.serve(async (req) => {
         await base44.asServiceRole.entities.TestRun.update(run_id, {
           status: 'completed',
           ended_at: new Date().toISOString(),
-          elapsed_ms: run.started_at ? Date.now() - new Date(run.started_at).getTime() : 0,
+          elapsed_ms: run.started_at ? Date.now() - new Date(run.started_at).getTime() : Date.now() - new Date(run.created_date).getTime(),
           pending_count: 0,
           working_count: working,
           failed_count: failed,
@@ -166,7 +179,7 @@ Deno.serve(async (req) => {
       ...(isDone ? {
         status: 'completed',
         ended_at: new Date().toISOString(),
-        elapsed_ms: run.started_at ? Date.now() - new Date(run.started_at).getTime() : 0,
+        elapsed_ms: run.started_at ? Date.now() - new Date(run.started_at).getTime() : Date.now() - new Date(run.created_date).getTime(),
       } : {}),
     });
 

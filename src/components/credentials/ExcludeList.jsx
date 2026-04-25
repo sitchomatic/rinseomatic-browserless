@@ -12,7 +12,7 @@ export default function ExcludeList({ items = [], onRestore }) {
         <Ban className="h-6 w-6 mx-auto mb-3 text-muted-foreground" />
         <div className="text-sm text-muted-foreground">No excluded credentials.</div>
         <div className="text-xs text-muted-foreground mt-1">
-          Credentials marked as disabled or no-account automatically appear here.
+          Credentials marked as disabled automatically appear here.
         </div>
       </div>
     );
@@ -37,7 +37,7 @@ export default function ExcludeList({ items = [], onRestore }) {
             <div className="font-mono text-sm truncate">{c.username}</div>
             {c.notes && <div className="text-[11px] text-muted-foreground truncate">{c.notes}</div>}
           </div>
-          <div className="col-span-2"><SiteChip site={c.site} size="sm" /></div>
+          <div className="col-span-2"><SiteChip siteKey={c.site_key || c.site} size="sm" /></div>
           <div className="col-span-2">
             <StatusPill status={c.status === "no_account" ? "failed" : c.status}>
               {c.excluded_reason || c.status?.replace(/_/g, " ")}

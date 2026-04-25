@@ -19,7 +19,7 @@ export default function NewRunDialog({ open, onOpenChange, sites, defaultSiteKey
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>New test run</DialogTitle>
-          <DialogDescription>Select the site and this will queue only credentials assigned to that site.</DialogDescription>
+          <DialogDescription>Select the site and this will queue only credentials assigned to that site. Selected credentials are used when provided.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="grid gap-2">
