@@ -4,17 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { countCredentialsForSite, MAX_BROWSER_SESSIONS, MAX_RETRIES, normalizeRunForm } from "@/lib/runPlanning";
 
 export default function NewRunDialog({ open, onOpenChange, sites, defaultSiteKey, credentials, onCreate }) {
   const [form, setForm] = React.useState({ site_key: "", concurrency: 2, max_retries: 1, label: "" });
 
   React.useEffect(() => {
-    if (open) setForm({ site_key: defaultSiteKey || sites?.[0]?.key || "", concurrency: 2, max_retries: 1, label: "" });
+    if (open) setForm({ site_key: defaultSiteKey || sites?.[0]?.key || "", concurrency: MAX_BROWSER_SESSIONS, max_retries: 1, label: "" });
   }, [open, sites, defaultSiteKey]);
 
+  const normalizedForm = React.useMemo(() => normalizeRunForm(form), [form]);
   const credentialCount = React.useMemo(
-    () => (credentials || []).reduce((count, credential) => count + (credential.site_key === form.site_key ? 1 : 0), 0),
-    [credentials, form.site_key]
+    () => countCredentialsForSite(credentials, normalizedForm.site_key),
+    [credentials, normalizedForm.site_key]
   );
 
   return (
@@ -36,14 +38,14 @@ export default function NewRunDialog({ open, onOpenChange, sites, defaultSiteKey
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-2">
-              <Label>Parallel browser sessions (1–5)</Label>
-              <Input type="number" min={1} max={5} value={form.concurrency}
-                onChange={(e) => setForm({ ...form, concurrency: Math.max(1, Math.min(5, Number(e.target.value) || 1)) })} />
+              <Label>Parallel browser sessions (1–{MAX_BROWSER_SESSIONS})</Label>
+              <Input type="number" min={1} max={MAX_BROWSER_SESSIONS} value={form.concurrency}
+                onChange={(e) => setForm({ ...form, concurrency: e.target.value })} />
             </div>
             <div className="grid gap-2">
               <Label>Retry failed browser errors</Label>
-              <Input type="number" min={0} max={3} value={form.max_retries}
-                onChange={(e) => setForm({ ...form, max_retries: Math.max(0, Math.min(3, Number(e.target.value) || 0)) })} />
+              <Input type="number" min={0} max={MAX_RETRIES} value={form.max_retries}
+                onChange={(e) => setForm({ ...form, max_retries: e.target.value })} />
             </div>
           </div>
           <div className="grid gap-2">
@@ -52,13 +54,13 @@ export default function NewRunDialog({ open, onOpenChange, sites, defaultSiteKey
           </div>
           <p className="text-xs text-muted-foreground rounded-md border border-border bg-secondary/40 p-2">
             Effect: clicking <span className="text-foreground font-medium">Start test run</span> will queue <span className="font-mono text-foreground">{credentialCount}</span> credential
-            {credentialCount === 1 ? "" : "s"} assigned to <span className="font-mono text-foreground">{form.site_key || "—"}</span>.
+            {credentialCount === 1 ? "" : "s"} assigned to <span className="font-mono text-foreground">{normalizedForm.site_key || "—"}</span>.
             {credentialCount === 0 && <span className="block mt-1 text-amber-300">No credentials exist for this site yet, so the run cannot start.</span>}
           </p>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} title="Close without starting a run">Cancel</Button>
-          <Button onClick={() => { onCreate(form); onOpenChange(false); }} disabled={!form.site_key || credentialCount === 0} title="Create queued results and begin testing credentials for the selected site">
+          <Button onClick={() => { onCreate(normalizedForm); onOpenChange(false); }} disabled={!normalizedForm.site_key || credentialCount === 0} title="Create queued results and begin testing credentials for the selected site">
             Start test run
           </Button>
         </DialogFooter>

@@ -15,6 +15,7 @@ import NewRunDialog from "@/components/runs/NewRunDialog";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { analyzeCredentials } from "@/lib/credentialMetrics";
+import { credentialsForRun, normalizeRunForm } from "@/lib/runPlanning";
 
 export default function Credentials() {
   const qc = useQueryClient();
@@ -98,8 +99,9 @@ export default function Credentials() {
       ? "No credentials exist for this selected site"
       : undefined;
 
-  const startRun = async ({ site_key, concurrency, max_retries, label }) => {
-    const creds = selectedItems.length > 0 ? selectedItems : items.filter((c) => c.site_key === site_key);
+  const startRun = async (rawForm) => {
+    const { site_key, concurrency, max_retries, label } = normalizeRunForm(rawForm);
+    const creds = credentialsForRun(items, selectedItems, site_key);
     if (creds.length === 0) return toast.error("No credentials for this site");
 
     const run = await base44.entities.TestRun.create({
