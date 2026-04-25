@@ -23,12 +23,22 @@ function writeAudit(message, category = "system", level = "info") {
 export default function AuditEventTracker() {
   const location = useLocation();
   const lastInputRef = React.useRef(0);
+  const [prefs, setPrefs] = React.useState({ audit_tracking_enabled: true, audit_track_inputs: true });
 
   React.useEffect(() => {
+    base44.auth.me().then((user) => setPrefs({
+      audit_tracking_enabled: user.audit_tracking_enabled ?? true,
+      audit_track_inputs: user.audit_track_inputs ?? true,
+    })).catch(() => {});
+  }, []);
+
+  React.useEffect(() => {
+    if (!prefs.audit_tracking_enabled) return;
     writeAudit(`Viewed ${location.pathname}${location.search || ""}`);
-  }, [location.pathname, location.search]);
+  }, [location.pathname, location.search, prefs.audit_tracking_enabled]);
 
   React.useEffect(() => {
+    if (!prefs.audit_tracking_enabled) return;
     const onClick = (event) => {
       const target = event.target?.closest?.("button, a, [role='button'], input, select, textarea");
       if (!target) return;
@@ -41,6 +51,7 @@ export default function AuditEventTracker() {
     };
 
     const onInput = (event) => {
+      if (!prefs.audit_track_inputs) return;
       const now = Date.now();
       if (now - lastInputRef.current < 2500) return;
       lastInputRef.current = now;
@@ -58,7 +69,7 @@ export default function AuditEventTracker() {
       document.removeEventListener("submit", onSubmit, true);
       document.removeEventListener("input", onInput, true);
     };
-  }, []);
+  }, [prefs.audit_tracking_enabled, prefs.audit_track_inputs]);
 
   return null;
 }

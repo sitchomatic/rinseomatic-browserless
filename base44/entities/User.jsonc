@@ -49,6 +49,16 @@
       "type": "boolean",
       "default": true,
       "description": "Show sanitized request body previews in terminal logs"
+    },
+    "audit_tracking_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Capture UI navigation, clicks, form submissions, and input updates in the audit log"
+    },
+    "audit_track_inputs": {
+      "type": "boolean",
+      "default": true,
+      "description": "Capture non-sensitive input update events in the audit log"
     }
   },
   "required": [

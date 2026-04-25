@@ -17,6 +17,8 @@ const DEFAULT_PREFS = {
   terminal_trace_network: true,
   terminal_trace_responses: true,
   terminal_trace_verbose: true,
+  audit_tracking_enabled: true,
+  audit_track_inputs: true,
 };
 
 export default function PreferencesPanel() {
@@ -39,6 +41,8 @@ export default function PreferencesPanel() {
       terminal_trace_network: user.terminal_trace_network ?? DEFAULT_PREFS.terminal_trace_network,
       terminal_trace_responses: user.terminal_trace_responses ?? DEFAULT_PREFS.terminal_trace_responses,
       terminal_trace_verbose: user.terminal_trace_verbose ?? DEFAULT_PREFS.terminal_trace_verbose,
+      audit_tracking_enabled: user.audit_tracking_enabled ?? DEFAULT_PREFS.audit_tracking_enabled,
+      audit_track_inputs: user.audit_track_inputs ?? DEFAULT_PREFS.audit_track_inputs,
     });
   }, [user]);
 
@@ -102,6 +106,20 @@ export default function PreferencesPanel() {
           <ToggleRow label="Network traffic" description="Capture fetch and XHR calls." checked={prefs.terminal_trace_network} onChange={(v) => update("terminal_trace_network", v)} />
           <ToggleRow label="Responses" description="Show sanitized response previews." checked={prefs.terminal_trace_responses} onChange={(v) => update("terminal_trace_responses", v)} />
           <ToggleRow label="Verbose bodies" description="Show sanitized request body previews." checked={prefs.terminal_trace_verbose} onChange={(v) => update("terminal_trace_verbose", v)} />
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border/70 bg-secondary/25 p-4 space-y-4">
+        <div className="flex items-start gap-3">
+          <Terminal className="h-4 w-4 text-primary mt-0.5" />
+          <div>
+            <Label>Audit tracking</Label>
+            <p className="text-xs text-muted-foreground mt-1">Controls UI activity logging in the ActionLog stream.</p>
+          </div>
+        </div>
+        <div className="grid md:grid-cols-2 gap-3">
+          <ToggleRow label="Track UI activity" description="Capture navigation, clicks, and form submissions." checked={prefs.audit_tracking_enabled} onChange={(v) => update("audit_tracking_enabled", v)} />
+          <ToggleRow label="Track input updates" description="Capture non-sensitive input edits with debounce." checked={prefs.audit_track_inputs} onChange={(v) => update("audit_track_inputs", v)} />
         </div>
       </div>
     </section>
