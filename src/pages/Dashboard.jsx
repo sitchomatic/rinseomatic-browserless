@@ -9,6 +9,7 @@ import { buildDashboardMetrics } from "@/lib/dashboardMetrics";
 import MaintenanceStatusBadge from "@/components/dashboard/MaintenanceStatusBadge";
 import DashboardVisualSummary from "@/components/dashboard/DashboardVisualSummary";
 import NetworkDiagnosticsPanel from "@/components/network/NetworkDiagnosticsPanel";
+import LiveAuditLog from "@/components/audit/LiveAuditLog";
 import { Button } from "@/components/ui/button";
 import { runInBatches } from "@/lib/batches";
 import { toast } from "sonner";
@@ -114,6 +115,8 @@ export default function Dashboard() {
       </div>
 
       <NetworkDiagnosticsPanel />
+
+      <LiveAuditLog compact />
 
       <DashboardVisualSummary totals={totals} siteStats={siteStats} activeRuns={activeRuns} />
 

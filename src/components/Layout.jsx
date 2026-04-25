@@ -2,6 +2,7 @@ import React from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { KeyRound, Play, Settings as SettingsIcon, Shield, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
+import AuditEventTracker from "@/components/audit/AuditEventTracker";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -27,6 +28,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-background text-foreground md:flex">
+      <AuditEventTracker />
       {/* Desktop sidebar */}
       <aside className="w-56 shrink-0 border-r border-border bg-card/40 hidden md:flex flex-col">
         <div className="px-5 py-5 border-b border-border flex items-center gap-2">
