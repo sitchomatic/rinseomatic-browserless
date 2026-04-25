@@ -6,18 +6,15 @@ import StatusPill from "@/components/shared/StatusPill";
 import { formatDistanceToNow } from "date-fns";
 
 export default function SchedulerHealthCard() {
-  const { data: heartbeats = [], isLoading } = useQuery({
+  const { data: health, isLoading } = useQuery({
     queryKey: ["scheduler-health"],
-    queryFn: () => base44.entities.ActionLog.filter({ category: "system", message: "Scheduler heartbeat" }, "-created_date", 1),
+    queryFn: async () => (await base44.functions.invoke("getSchedulerHealth", {})).data,
     refetchInterval: 60 * 1000,
   });
 
-  const heartbeat = heartbeats[0];
-  const lastRunAt = heartbeat?.timestamp || heartbeat?.created_date;
-  const minutesSinceRun = lastRunAt ? (Date.now() - new Date(lastRunAt).getTime()) / 60000 : Infinity;
-  const healthy = minutesSinceRun <= 10;
-  const lastRunLabel = lastRunAt
-    ? formatDistanceToNow(new Date(lastRunAt), { addSuffix: true })
+  const healthy = !!health?.healthy;
+  const lastRunLabel = health?.last_run_at
+    ? formatDistanceToNow(new Date(health.last_run_at), { addSuffix: true })
     : "never";
 
   return (

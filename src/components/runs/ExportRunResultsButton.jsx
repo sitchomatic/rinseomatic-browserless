@@ -12,7 +12,9 @@ export default function ExportRunResultsButton({ run, results }) {
     const link = document.createElement("a");
     link.href = url;
     link.download = `${run?.label || run?.site_key || "run"}-results.csv`.replace(/[^a-z0-9._-]+/gi, "-");
+    document.body.appendChild(link);
     link.click();
+    link.remove();
     URL.revokeObjectURL(url);
   };
 

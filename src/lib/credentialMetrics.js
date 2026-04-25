@@ -19,6 +19,6 @@ export function analyzeCredentials(credentials = [], sites = [], selectedIds = n
     sameSite: true,
     canRunSelected: selectedItems.length > 0,
     firstSiteWithCredentials: sites[0]?.key || "",
-    currentFilterHasCredentials: credentials.length > 0,
+    currentFilterHasCredentials: filtered.length > 0,
   };
 }
