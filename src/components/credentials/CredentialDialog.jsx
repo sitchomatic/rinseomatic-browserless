@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, X } from "lucide-react";
 
-export default function CredentialDialog({ open, onOpenChange, onSubmit }) {
+export default function CredentialDialog({ open, onOpenChange, onSubmit, credential }) {
   const [form, setForm] = React.useState({
     username: "",
     password: "",
@@ -15,12 +15,12 @@ export default function CredentialDialog({ open, onOpenChange, onSubmit }) {
   React.useEffect(() => {
     if (open) {
       setForm({
-        username: "",
-        password: "",
-        password_variants: []
+        username: credential?.username || "",
+        password: credential?.password || "",
+        password_variants: credential?.password_variants || []
       });
     }
-  }, [open]);
+  }, [open, credential]);
 
   const submit = () => {
     if (!form.username || !form.password) return;
@@ -46,7 +46,7 @@ export default function CredentialDialog({ open, onOpenChange, onSubmit }) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add credential</DialogTitle>
+          <DialogTitle>{credential ? "Edit credential" : "Add credential"}</DialogTitle>
           <DialogDescription>Store one reusable username and password. Choose the target site only when starting a run.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -89,7 +89,7 @@ export default function CredentialDialog({ open, onOpenChange, onSubmit }) {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={submit}>Add</Button>
+          <Button onClick={submit}>{credential ? "Save" : "Add"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

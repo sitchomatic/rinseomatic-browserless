@@ -59,11 +59,18 @@ export default function NetworkDiagnosticsPanel({ compact = false, className }) 
         )}
       </div>
 
-      {result?.repairs?.length > 0 && (
-        <div className="px-4 md:px-5 pb-4 md:pb-5">
-          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-200">
-            Auto-repaired {result.repairs.length} site profile{result.repairs.length === 1 ? "" : "s"}: {result.repairs.map((repair) => repair.site_key).join(", ")}.
-          </div>
+      {(result?.repairs?.length > 0 || result?.checks?.some((check) => !check.ok)) && (
+        <div className="px-4 md:px-5 pb-4 md:pb-5 space-y-2">
+          {result?.repairs?.length > 0 && (
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-200">
+              Auto-repaired {result.repairs.length} site profile{result.repairs.length === 1 ? "" : "s"}: {result.repairs.map((repair) => repair.site_key).join(", ")}.
+            </div>
+          )}
+          {result?.checks?.filter((check) => !check.ok).map((check, index) => (
+            <div key={`${check.label}-${index}`} className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-100">
+              <span className="font-medium">Needs attention:</span> {check.label}{check.detail ? ` — ${check.detail}` : ""}
+            </div>
+          ))}
         </div>
       )}
     </section>

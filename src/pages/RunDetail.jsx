@@ -10,6 +10,7 @@ import StatusPill from "@/components/shared/StatusPill";
 import SiteChip from "@/components/shared/SiteChip";
 import ResultsTable from "@/components/runs/ResultsTable";
 import RunEvidencePanel from "@/components/runs/RunEvidencePanel";
+import ExportRunResultsButton from "@/components/runs/ExportRunResultsButton";
 import NetworkDiagnosticsPanel from "@/components/network/NetworkDiagnosticsPanel";
 import { formatMs } from "@/lib/sites";
 import { runProgress, summarizeResults } from "@/lib/runMetrics";
@@ -147,6 +148,7 @@ export default function RunDetail() {
         description={`${run.total_count} credentials · concurrency ${run.concurrency} · ${run.max_retries ?? 1} retry`}
         actions={
           <>
+            <ExportRunResultsButton run={run} results={results} />
             <StatusPill status={run.status} />
             {(run.status === "running" || run.status === "queued") && (
               <Button variant="outline" size="sm" className="gap-2" onClick={() => cancelMut.mutate()}>

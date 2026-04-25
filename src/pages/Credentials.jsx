@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, Upload, Play, KeyRound, Settings as SettingsIcon } from "lucide-react";
 import PageHeader from "@/components/shared/PageHeader";
 import EmptyState from "@/components/shared/EmptyState";
@@ -21,9 +22,11 @@ export default function Credentials() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [addOpen, setAddOpen] = React.useState(false);
+  const [editingCredential, setEditingCredential] = React.useState(null);
   const [importOpen, setImportOpen] = React.useState(false);
   const [runOpen, setRunOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState("all");
   const [selected, setSelected] = React.useState(new Set());
   const [confirmDelete, setConfirmDelete] = React.useState(null);
 
@@ -45,6 +48,10 @@ export default function Credentials() {
     mutationFn: (data) => base44.entities.Credential.create(data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["credentials"] }); toast.success("Credential added"); },
   });
+  const updateMut = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Credential.update(id, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["credentials"] }); toast.success("Credential updated"); },
+  });
   const bulkMut = useMutation({
     mutationFn: (rows) => runInBatches(rows, 500, (chunk) => base44.entities.Credential.bulkCreate(chunk)),
     onSuccess: (_, rows) => { qc.invalidateQueries({ queryKey: ["credentials"] }); toast.success(`Imported ${rows.length}`); },
@@ -61,8 +68,8 @@ export default function Credentials() {
     firstSiteWithCredentials,
     currentFilterHasCredentials,
   } = React.useMemo(
-    () => analyzeCredentials(items, sites, selected, "all", search),
-    [items, sites, selected, search]
+    () => analyzeCredentials(items, sites, selected, statusFilter, search),
+    [items, sites, selected, statusFilter, search]
   );
 
   React.useEffect(() => {
@@ -152,6 +159,18 @@ export default function Credentials() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search username..." className="pl-9 font-mono h-9" />
         </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full md:w-44 h-9">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="working">Working</SelectItem>
+            <SelectItem value="failed">Failed</SelectItem>
+            <SelectItem value="error">Error</SelectItem>
+            <SelectItem value="untested">Untested</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {sitesLoading || itemsLoading ? (
@@ -188,6 +207,7 @@ export default function Credentials() {
           onToggle={toggle}
           onToggleAll={toggleAll}
           onDelete={(c) => setConfirmDelete(c)}
+          onEdit={(c) => { setEditingCredential(c); setAddOpen(true); }}
         />
       )}
 
@@ -201,7 +221,12 @@ export default function Credentials() {
         onConfirm={() => { if (confirmDelete) deleteMut.mutate(confirmDelete.id); setConfirmDelete(null); }}
       />
 
-      <CredentialDialog open={addOpen} onOpenChange={setAddOpen} onSubmit={(d) => createMut.mutate(d)} />
+      <CredentialDialog
+        open={addOpen}
+        onOpenChange={(open) => { setAddOpen(open); if (!open) setEditingCredential(null); }}
+        credential={editingCredential}
+        onSubmit={(data) => editingCredential ? updateMut.mutate({ id: editingCredential.id, data }) : createMut.mutate(data)}
+      />
       <CsvImportDialog open={importOpen} onOpenChange={setImportOpen} onImport={(rows) => bulkMut.mutate(rows)} />
       <NewRunDialog
         open={runOpen}

@@ -5,6 +5,8 @@ export function analyzeCredentials(credentials = [], sites = [], selectedIds = n
 
   for (const credential of credentials) {
     if (selectedIds.has(credential.id)) selectedItems.push(credential);
+    const status = credential.status || "untested";
+    if (siteFilter !== "all" && status !== siteFilter) continue;
     if (normalizedSearch && !(credential.username || "").toLowerCase().includes(normalizedSearch)) continue;
     filtered.push(credential);
   }

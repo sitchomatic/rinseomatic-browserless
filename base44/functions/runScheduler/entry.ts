@@ -20,6 +20,14 @@ Deno.serve(async (req) => {
     const allActive = [...activeRuns, ...runningRuns];
 
     if (allActive.length === 0) {
+      await base44.asServiceRole.entities.ActionLog.create({
+        level: 'info',
+        category: 'system',
+        message: 'Scheduler heartbeat',
+        delta_ms: 0,
+        timestamp: new Date().toISOString(),
+        site: 'system',
+      });
       return Response.json({ message: 'No active runs', processed: 0 });
     }
 
@@ -34,6 +42,15 @@ Deno.serve(async (req) => {
         }
       })
     );
+
+    await base44.asServiceRole.entities.ActionLog.create({
+      level: 'info',
+      category: 'system',
+      message: 'Scheduler heartbeat',
+      delta_ms: 0,
+      timestamp: new Date().toISOString(),
+      site: 'system',
+    });
 
     return Response.json({ processed: allActive.length, results });
   } catch (error) {

@@ -8,6 +8,7 @@ import { formatMs } from "@/lib/sites";
 import { buildDashboardMetrics } from "@/lib/dashboardMetrics";
 import MaintenanceStatusBadge from "@/components/dashboard/MaintenanceStatusBadge";
 import DashboardVisualSummary from "@/components/dashboard/DashboardVisualSummary";
+import SchedulerHealthCard from "@/components/dashboard/SchedulerHealthCard";
 import NetworkDiagnosticsPanel from "@/components/network/NetworkDiagnosticsPanel";
 import LiveAuditLog from "@/components/audit/LiveAuditLog";
 import { Button } from "@/components/ui/button";
@@ -113,6 +114,8 @@ export default function Dashboard() {
         <SummaryTile label="Working" value={totals.working} icon={CheckCircle2} accent="text-emerald-300" />
         <SummaryTile label="Failed / Error" value={totals.failed} icon={XCircle} accent="text-rose-300" />
       </div>
+
+      <SchedulerHealthCard />
 
       <NetworkDiagnosticsPanel />
 
