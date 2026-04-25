@@ -125,13 +125,23 @@ Deno.serve(async (req) => {
     // Execute tests in parallel (capped at 2)
     const outcomes = await Promise.all(queued.map((r) => testOne(base44, site, r)));
 
-    // Persist results + handle retries
+    // Persist results + update run progress incrementally.
     const maxRetries = run.max_retries ?? 1;
+    const progressDelta = { pending: 0, working: 0, failed: 0, errored: 0 };
+
     await Promise.all(queued.map(async (r, i) => {
       const o = outcomes[i];
       const attempts = (r.attempts || 0) + 1;
       const shouldRetry = o.status === 'error' && attempts <= maxRetries;
       const finalStatus = shouldRetry ? 'queued' : o.status;
+
+      if (!shouldRetry) {
+        progressDelta.pending -= 1;
+        if (finalStatus === 'working') progressDelta.working += 1;
+        else if (finalStatus === 'failed') progressDelta.failed += 1;
+        else progressDelta.errored += 1;
+      }
+
       await base44.asServiceRole.entities.ActionLog.create({
         session_id: run_id,
         level: finalStatus === 'working' ? 'success' : finalStatus === 'queued' ? 'warn' : 'error',
@@ -177,22 +187,14 @@ Deno.serve(async (req) => {
       }
     }));
 
-    // Recount and update run progress
-    const all = await base44.asServiceRole.entities.TestResult.filter({ run_id }, '-created_date', 5000);
-    const counts = all.reduce((acc, r) => {
-      if (r.status === 'queued' || r.status === 'running') acc.pending += 1;
-      if (r.status === 'working') acc.working += 1;
-      if (r.status === 'failed') acc.failed += 1;
-      if (r.status === 'error') acc.errored += 1;
-      return acc;
-    }, { pending: 0, working: 0, failed: 0, errored: 0 });
-    const isDone = counts.pending === 0;
+    const pendingCount = Math.max(0, (run.pending_count || queued.length) + progressDelta.pending);
+    const isDone = pendingCount === 0;
 
     await base44.asServiceRole.entities.TestRun.update(run_id, {
-      pending_count: counts.pending,
-      working_count: counts.working,
-      failed_count: counts.failed,
-      error_count: counts.errored,
+      pending_count: pendingCount,
+      working_count: (run.working_count || 0) + progressDelta.working,
+      failed_count: (run.failed_count || 0) + progressDelta.failed,
+      error_count: (run.error_count || 0) + progressDelta.errored,
       ...(isDone ? {
         status: 'completed',
         ended_at: new Date().toISOString(),
