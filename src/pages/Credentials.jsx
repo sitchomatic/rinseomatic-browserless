@@ -14,6 +14,7 @@ import CsvImportDialog from "@/components/credentials/CsvImportDialog";
 import NewRunDialog from "@/components/runs/NewRunDialog";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { analyzeCredentials } from "@/lib/credentialMetrics";
 
 export default function Credentials() {
   const qc = useQueryClient();
@@ -29,11 +30,15 @@ export default function Credentials() {
   const { data: sites = [], isLoading: sitesLoading } = useQuery({
     queryKey: ["sites"],
     queryFn: () => base44.entities.Site.list("-created_date", 100),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
   });
 
   const { data: items = [], isLoading: itemsLoading } = useQuery({
     queryKey: ["credentials"],
     queryFn: () => base44.entities.Credential.list("-created_date", 2000),
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
 
   const createMut = useMutation({
@@ -49,11 +54,28 @@ export default function Credentials() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["credentials"] }),
   });
 
-  const filtered = items.filter((c) => {
-    if (siteFilter !== "all" && c.site_key !== siteFilter) return false;
-    if (search && !(c.username || "").toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+  const {
+    filtered,
+    countsBySite,
+    selectedItems,
+    runSiteKey,
+    sameSite,
+    canRunSelected,
+    firstSiteWithCredentials,
+    currentFilterHasCredentials,
+  } = React.useMemo(
+    () => analyzeCredentials(items, sites, selected, siteFilter, search),
+    [items, sites, selected, siteFilter, search]
+  );
+
+  React.useEffect(() => {
+    setSelected((current) => {
+      if (current.size === 0) return current;
+      const validIds = new Set(items.map((item) => item.id));
+      const next = new Set([...current].filter((id) => validIds.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [items]);
 
   const toggle = (id) => setSelected((s) => {
     const n = new Set(s);
@@ -70,12 +92,6 @@ export default function Credentials() {
     return new Set([...s, ...filtered.map((c) => c.id)]);
   });
 
-  const selectedItems = items.filter((c) => selected.has(c.id));
-  const runSiteKey = selectedItems[0]?.site_key;
-  const sameSite = selectedItems.every((c) => c.site_key === runSiteKey);
-  const canRunSelected = selectedItems.length > 0 && sameSite;
-  const firstSiteWithCredentials = sites.find((s) => items.some((c) => c.site_key === s.key))?.key;
-  const currentFilterHasCredentials = siteFilter === "all" || items.some((c) => c.site_key === siteFilter);
   const runDisabledReason = selected.size > 0 && !sameSite
     ? "Selected credentials must belong to one site"
     : !currentFilterHasCredentials
@@ -106,11 +122,6 @@ export default function Credentials() {
     toast.success(`Run started · ${creds.length} credentials`);
     navigate(`/runs/${run.id}`);
   };
-
-  const siteCounts = sites.reduce((acc, s) => {
-    acc[s.key] = items.filter((c) => c.site_key === s.key).length;
-    return acc;
-  }, {});
 
   return (
     <div className="px-6 md:px-10 py-8 max-w-[1400px] mx-auto">
@@ -144,7 +155,7 @@ export default function Credentials() {
             <TabsTrigger value="all">All <span className="ml-2 text-muted-foreground font-mono">{items.length}</span></TabsTrigger>
             {sites.map((s) => (
               <TabsTrigger key={s.key} value={s.key}>
-                {s.label} <span className="ml-2 text-muted-foreground font-mono">{siteCounts[s.key] || 0}</span>
+                {s.label} <span className="ml-2 text-muted-foreground font-mono">{countsBySite[s.key] || 0}</span>
               </TabsTrigger>
             ))}
           </TabsList>

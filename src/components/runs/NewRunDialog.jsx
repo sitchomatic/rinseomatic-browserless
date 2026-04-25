@@ -12,7 +12,10 @@ export default function NewRunDialog({ open, onOpenChange, sites, defaultSiteKey
     if (open) setForm({ site_key: defaultSiteKey || sites?.[0]?.key || "", concurrency: 2, max_retries: 1, label: "" });
   }, [open, sites, defaultSiteKey]);
 
-  const credentialCount = (credentials || []).filter((c) => c.site_key === form.site_key).length;
+  const credentialCount = React.useMemo(
+    () => (credentials || []).reduce((count, credential) => count + (credential.site_key === form.site_key ? 1 : 0), 0),
+    [credentials, form.site_key]
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
