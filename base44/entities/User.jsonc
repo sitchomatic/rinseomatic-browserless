@@ -29,6 +29,26 @@
       "type": "number",
       "default": 30,
       "description": "Dashboard refresh speed in seconds"
+    },
+    "terminal_trace_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Enable terminal-style live tracing"
+    },
+    "terminal_trace_network": {
+      "type": "boolean",
+      "default": true,
+      "description": "Capture frontend fetch and XHR requests in the terminal"
+    },
+    "terminal_trace_responses": {
+      "type": "boolean",
+      "default": true,
+      "description": "Show sanitized response previews in terminal logs"
+    },
+    "terminal_trace_verbose": {
+      "type": "boolean",
+      "default": true,
+      "description": "Show sanitized request body previews in terminal logs"
     }
   },
   "required": [

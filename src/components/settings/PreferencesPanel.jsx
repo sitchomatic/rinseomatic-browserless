@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Bell, Gauge } from "lucide-react";
+import { Bell, Gauge, Terminal } from "lucide-react";
 import { toast } from "sonner";
 
 const DEFAULT_PREFS = {
@@ -13,6 +13,10 @@ const DEFAULT_PREFS = {
   notify_run_failed: true,
   notify_maintenance_alerts: true,
   dashboard_refresh_seconds: 30,
+  terminal_trace_enabled: true,
+  terminal_trace_network: true,
+  terminal_trace_responses: true,
+  terminal_trace_verbose: true,
 };
 
 export default function PreferencesPanel() {
@@ -31,6 +35,10 @@ export default function PreferencesPanel() {
       notify_run_failed: user.notify_run_failed ?? DEFAULT_PREFS.notify_run_failed,
       notify_maintenance_alerts: user.notify_maintenance_alerts ?? DEFAULT_PREFS.notify_maintenance_alerts,
       dashboard_refresh_seconds: user.dashboard_refresh_seconds ?? DEFAULT_PREFS.dashboard_refresh_seconds,
+      terminal_trace_enabled: user.terminal_trace_enabled ?? DEFAULT_PREFS.terminal_trace_enabled,
+      terminal_trace_network: user.terminal_trace_network ?? DEFAULT_PREFS.terminal_trace_network,
+      terminal_trace_responses: user.terminal_trace_responses ?? DEFAULT_PREFS.terminal_trace_responses,
+      terminal_trace_verbose: user.terminal_trace_verbose ?? DEFAULT_PREFS.terminal_trace_verbose,
     });
   }, [user]);
 
@@ -79,6 +87,22 @@ export default function PreferencesPanel() {
             <SelectItem value="300">Light · 5 min</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="rounded-xl border border-border/70 bg-secondary/25 p-4 space-y-4">
+        <div className="flex items-start gap-3">
+          <Terminal className="h-4 w-4 text-primary mt-0.5" />
+          <div>
+            <Label>Live terminal tracing</Label>
+            <p className="text-xs text-muted-foreground mt-1">Controls what appears in the terminal-style command and response stream.</p>
+          </div>
+        </div>
+        <div className="grid md:grid-cols-4 gap-3">
+          <ToggleRow label="Enable terminal" description="Turn live tracing on or off." checked={prefs.terminal_trace_enabled} onChange={(v) => update("terminal_trace_enabled", v)} />
+          <ToggleRow label="Network traffic" description="Capture fetch and XHR calls." checked={prefs.terminal_trace_network} onChange={(v) => update("terminal_trace_network", v)} />
+          <ToggleRow label="Responses" description="Show sanitized response previews." checked={prefs.terminal_trace_responses} onChange={(v) => update("terminal_trace_responses", v)} />
+          <ToggleRow label="Verbose bodies" description="Show sanitized request body previews." checked={prefs.terminal_trace_verbose} onChange={(v) => update("terminal_trace_verbose", v)} />
+        </div>
       </div>
     </section>
   );

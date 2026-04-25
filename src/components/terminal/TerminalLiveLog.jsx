@@ -2,7 +2,7 @@ import React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { Terminal, Trash2 } from "lucide-react";
+import { Activity, Terminal, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -42,8 +42,13 @@ export default function TerminalLiveLog({ compact = false, className }) {
         <div className="flex items-center gap-2 min-w-0">
           <Terminal className="h-4 w-4 text-emerald-300" />
           <div>
-            <div className="text-sm font-semibold text-emerald-100">Live terminal</div>
-            <div className="text-[10px] font-mono uppercase tracking-wider text-emerald-300/70">requests → responses · sanitized</div>
+            <div className="text-sm font-semibold text-emerald-100 flex items-center gap-2">
+              Live terminal
+              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-emerald-200">
+                <Activity className="h-3 w-3" /> live
+              </span>
+            </div>
+            <div className="text-[10px] font-mono uppercase tracking-wider text-emerald-300/70">requests ↔ responses · CMD steps · sanitized</div>
           </div>
         </div>
         {!compact && (

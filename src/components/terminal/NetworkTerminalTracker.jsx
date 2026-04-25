@@ -5,8 +5,14 @@ const SENSITIVE_KEYS = /password|token|secret|key|authorization|cookie|credentia
 
 export default function NetworkTerminalTracker() {
   const loggingRef = React.useRef(false);
+  const { data: userPrefs } = useTerminalPrefs();
+  const enabled = userPrefs?.terminal_trace_enabled ?? true;
+  const networkEnabled = userPrefs?.terminal_trace_network ?? true;
+  const responsePreview = userPrefs?.terminal_trace_responses ?? true;
+  const verboseBodies = userPrefs?.terminal_trace_verbose ?? true;
 
   React.useEffect(() => {
+    if (!enabled || !networkEnabled) return;
     const originalFetch = window.fetch;
     const OriginalXHR = window.XMLHttpRequest;
 
@@ -24,11 +30,11 @@ export default function NetworkTerminalTracker() {
       const url = typeof input === "string" ? input : input?.url || "unknown";
       if (shouldSkipUrl(url)) return originalFetch(input, init);
       const method = init?.method || (typeof input !== "string" ? input?.method : null) || "GET";
-      safeWrite(`HTTP → ${method.toUpperCase()} ${shortUrl(url)} ${summarizeBody(init?.body)}`, "network", "debug");
+      safeWrite(`HTTP → ${method.toUpperCase()} ${shortUrl(url)} ${verboseBodies ? summarizeBody(init?.body) : ""}`, "network", "debug");
 
       try {
         const response = await originalFetch(input, init);
-        const body = await response.clone().text().catch(() => "");
+        const body = responsePreview ? await response.clone().text().catch(() => "") : "";
         safeWrite(`HTTP ← ${response.status} ${method.toUpperCase()} ${shortUrl(url)} · ${Date.now() - started}ms ${body ? `· response=${redact(body).slice(0, 360)}` : ""}`, "network", response.ok ? "success" : "warn");
         return response;
       } catch (error) {
@@ -54,9 +60,10 @@ export default function NetworkTerminalTracker() {
       xhr.send = function tracedSend(body) {
         if (shouldSkipUrl(url)) return originalSend.call(xhr, body);
         started = Date.now();
-        safeWrite(`XHR → ${method} ${shortUrl(url)} ${summarizeBody(body)}`, "network", "debug");
+        safeWrite(`XHR → ${method} ${shortUrl(url)} ${verboseBodies ? summarizeBody(body) : ""}`, "network", "debug");
         xhr.addEventListener("loadend", () => {
-          safeWrite(`XHR ← ${xhr.status} ${method} ${shortUrl(url)} · ${Date.now() - started}ms ${xhr.responseText ? `· response=${redact(xhr.responseText).slice(0, 360)}` : ""}`, "network", xhr.status >= 200 && xhr.status < 400 ? "success" : "warn");
+          const responseText = responsePreview ? xhr.responseText : "";
+          safeWrite(`XHR ← ${xhr.status} ${method} ${shortUrl(url)} · ${Date.now() - started}ms ${responseText ? `· response=${redact(responseText).slice(0, 360)}` : ""}`, "network", xhr.status >= 200 && xhr.status < 400 ? "success" : "warn");
         });
         return originalSend.call(xhr, body);
       };
@@ -68,9 +75,19 @@ export default function NetworkTerminalTracker() {
       window.fetch = originalFetch;
       window.XMLHttpRequest = OriginalXHR;
     };
-  }, []);
+  }, [enabled, networkEnabled, responsePreview, verboseBodies]);
 
   return null;
+}
+
+function useTerminalPrefs() {
+  const [data, setData] = React.useState(null);
+
+  React.useEffect(() => {
+    base44.auth.me().then(setData).catch(() => setData({}));
+  }, []);
+
+  return { data };
 }
 
 function shouldSkipUrl(url) {

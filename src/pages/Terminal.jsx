@@ -1,6 +1,7 @@
 import React from "react";
 import PageHeader from "@/components/shared/PageHeader";
 import TerminalLiveLog from "@/components/terminal/TerminalLiveLog";
+import TerminalTraceStatus from "@/components/terminal/TerminalTraceStatus";
 
 export default function Terminal() {
   return (
@@ -10,6 +11,7 @@ export default function Terminal() {
         title="Terminal"
         description="A terminal-style live stream of app activity, outgoing requests, and incoming responses with sensitive values redacted."
       />
+      <TerminalTraceStatus />
       <TerminalLiveLog />
     </div>
   );
