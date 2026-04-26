@@ -86,7 +86,6 @@ async function saveRecording(base44, result, context) {
     const uploaded = await base44.asServiceRole.integrations.Core.UploadFile({ file });
     videoUrl = uploaded.file_url;
   }
-  if (result.recording_mode === 'video' && !videoUrl) return;
   await base44.asServiceRole.entities.RunRecording.create({
     run_id: context.run_id,
     result_id: context.result_id,
@@ -98,7 +97,7 @@ async function saveRecording(base44, result, context) {
     video_url: videoUrl,
     note: result.recording_mode === 'replay'
       ? 'Replay is available in the Browserless dashboard after the session finishes.'
-      : 'WebM video stored in this app.',
+      : (videoUrl ? 'WebM video stored in this app.' : 'Video recording was requested, but Browserless did not return a video file.'),
     captured_at: new Date().toISOString(),
   });
 }
@@ -132,9 +131,6 @@ function shouldCaptureScreenshot(mode, stepIndex) {
 
 function decodeRecordingValue(value) {
   if (!value) return null;
-  if (value instanceof Uint8Array) return value;
-  if (value instanceof ArrayBuffer) return new Uint8Array(value);
-  if (Array.isArray(value)) return new Uint8Array(value);
   const text = String(value);
   const base64 = text.startsWith('data:') ? text.split(',').pop() : text;
   if (/^[A-Za-z0-9+/=\r\n]+$/.test(base64) && base64.length > 64) {
@@ -143,14 +139,6 @@ function decodeRecordingValue(value) {
     } catch (_) {}
   }
   return Uint8Array.from(text, (char) => char.charCodeAt(0) & 255);
-}
-
-function extractRecordingBinary(response) {
-  if (!response) return null;
-  const payload = response.value || response.data || response.recording || response.video || response.buffer || response.body;
-  if (payload) return decodeRecordingValue(payload);
-  if (typeof response === 'string') return decodeRecordingValue(response);
-  return null;
 }
 
 async function performLoginOnPage(page, site, username, password, recordingMode, screenshotMode = 'key_steps') {
@@ -217,7 +205,7 @@ async function performLoginOnPage(page, site, username, password, recordingMode,
   let videoBinary = null;
   if (recordingMode === 'video' && recordingStarted) {
     const response = await cdp.send('Browserless.stopRecording').catch(() => null);
-    videoBinary = extractRecordingBinary(response);
+    videoBinary = decodeRecordingValue(response?.value || '');
   }
   if (recordingMode === 'replay') await cdp.send('Browserless.stopSessionRecording').catch(() => null);
   await cdp?.detach().catch(() => null);
