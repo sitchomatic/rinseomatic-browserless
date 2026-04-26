@@ -119,10 +119,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Cap concurrency at 2 to avoid function timeouts with Playwright sessions
+    // Cap concurrency at 4 to align with V7-V9 baseline (multi-concurrency toggle)
     const concurrency = run.recording_mode && run.recording_mode !== 'none'
       ? 1
-      : Math.max(1, Math.min(2, run.concurrency || 2));
+      : Math.max(1, Math.min(4, run.concurrency || 4));
 
     const queued = await base44.asServiceRole.entities.TestResult.filter(
       { run_id, status: 'queued' },

@@ -141,7 +141,221 @@ function decodeRecordingValue(value) {
   return Uint8Array.from(text, (char) => char.charCodeAt(0) & 255);
 }
 
-async function performLoginOnPage(page, site, username, password, recordingMode, screenshotMode = 'key_steps') {
+async function v7PerformLoginOnPage(page, site, username, passwords, recordingMode, screenshotMode = 'key_steps') {
+  const userSel = '#username';
+  const passSel = '#password';
+  const submitSel = '#loginSubmit';
+  const navTimeout = site.navigation_timeout_ms ?? 30000;
+  const selTimeout = site.selector_timeout_ms ?? 10000;
+  const vw = site.viewport_width || 1920;
+  const vh = site.viewport_height || 1080;
+  const userAgent = site.user_agent || '';
+  const acceptLang = site.accept_language || '';
+
+  await page.setViewport({ width: vw, height: vh });
+  if (userAgent) await page.setUserAgent(userAgent);
+  if (acceptLang) await page.setExtraHTTPHeaders({ 'Accept-Language': acceptLang });
+
+  const cdp = recordingMode ? await page.createCDPSession() : null;
+  let recordingStarted = false;
+  if (recordingMode === 'video') {
+    await cdp.send('Browserless.startRecording');
+    recordingStarted = true;
+  }
+
+  const screenshots = [];
+  const debugReport = { steps: [], started_at: new Date().toISOString(), login_url: site.login_url, recording_mode: recordingMode || 'none', screenshot_mode: screenshotMode };
+  
+  const capture = async (step_label, step_index) => {
+    const url = page.url();
+    const title = await page.title().catch(() => '');
+    const base64 = shouldCaptureScreenshot(screenshotMode, step_index)
+      ? await page.screenshot({ encoding: 'base64', fullPage: false }).catch(() => null)
+      : null;
+    debugReport.steps.push({ step_label, step_index, url, title, captured_at: new Date().toISOString(), screenshot: !!base64, screenshot_mode: screenshotMode });
+    if (base64) screenshots.push({ step_label, step_index, base64 });
+  };
+
+  await page.goto(site.login_url, { waitUntil: 'networkidle0', timeout: navTimeout });
+  await capture('01 V7 page loaded', 1);
+
+  await page.waitForSelector(userSel, { visible: true, timeout: selTimeout });
+  await page.waitForSelector(passSel, { visible: true, timeout: selTimeout });
+  await page.waitForSelector(submitSel, { visible: true, timeout: selTimeout });
+
+  let finalUrl = page.url();
+  let markerFound = false;
+  let workingPassword = null;
+  let earlyStop = false;
+  let earlyStopReason = '';
+
+  for (let i = 0; i < passwords.length; i++) {
+    const pass = passwords[i];
+    
+    await page.click(userSel, { clickCount: 3 });
+    await page.type(userSel, username, { delay: Math.floor(Math.random() * 100) + 50 });
+    
+    await page.click(passSel, { clickCount: 3 });
+    await page.type(passSel, pass, { delay: Math.floor(Math.random() * 100) + 50 });
+    
+    await capture('02 V7 creds entered attempt ' + (i+1), 2 + (i*10));
+    
+    await page.click(submitSel);
+    
+    await new Promise(r => setTimeout(r, i === 0 ? 400 : 700));
+    await capture('03 V7 post-submit attempt ' + (i+1), 3 + (i*10));
+    
+    await new Promise(r => setTimeout(r, 4500));
+    
+    const pageText = await page.evaluate(() => document.body.innerText.toLowerCase());
+    if (pageText.includes('disabled')) {
+      earlyStop = true;
+      earlyStopReason = 'disabled';
+      break;
+    }
+    if (!pageText.includes('incorrect password') && !pageText.includes('invalid email') && !pageText.includes('error')) {
+      markerFound = true;
+      workingPassword = pass;
+      break;
+    }
+  }
+
+  finalUrl = page.url();
+  
+  let videoBinary = null;
+  if (recordingMode === 'video' && recordingStarted) {
+    const response = await cdp.send('Browserless.stopRecording').catch(() => null);
+    videoBinary = decodeRecordingValue(response?.value || '');
+  }
+  if (recordingMode === 'replay') await cdp.send('Browserless.stopSessionRecording').catch(() => null);
+  await cdp?.detach().catch(() => null);
+
+  debugReport.finished_at = new Date().toISOString();
+  debugReport.final_url = finalUrl;
+  debugReport.success_marker_found = markerFound;
+  debugReport.v7_active = true;
+
+  return { finalUrl, markerFound, screenshots, debugReport, recording_mode: recordingMode || '', videoBinary, workingPassword, earlyStop, earlyStopReason, v7_active: true };
+}
+
+async function v7AttemptLoginWithRecording({ browserlessWsUrl, site, username, passwords, recordingMode, screenshotMode }) {
+  const browser = await puppeteer.connect({ browserWSEndpoint: browserlessWsUrl, protocolTimeout: 90000 });
+  try {
+    const page = await browser.newPage();
+    return await v7PerformLoginOnPage(page, site, username, passwords, recordingMode, screenshotMode);
+  } finally {
+    await browser.close().catch(() => null);
+  }
+}
+
+async function v7AttemptLogin({ browserlessUrl, site, username, passwords, screenshotMode = 'key_steps' }) {
+  const fnBody = `
+    export default async ({ page }) => {
+      const loginUrl = ${JSON.stringify(site.login_url)};
+      const userSel = '#username';
+      const passSel = '#password';
+      const submitSel = '#loginSubmit';
+      const navTimeout = ${site.navigation_timeout_ms ?? 30000};
+      const selTimeout = ${site.selector_timeout_ms ?? 10000};
+      const vw = ${site.viewport_width || 1920};
+      const vh = ${site.viewport_height || 1080};
+      const userAgent = ${JSON.stringify(site.user_agent || '')};
+      const acceptLang = ${JSON.stringify(site.accept_language || '')};
+      const user = ${JSON.stringify(username)};
+      const passwords = ${JSON.stringify(passwords)};
+      const screenshotMode = ${JSON.stringify(screenshotMode)};
+
+      await page.setViewport({ width: vw, height: vh });
+      if (userAgent) await page.setUserAgent(userAgent);
+      if (acceptLang) await page.setExtraHTTPHeaders({ 'Accept-Language': acceptLang });
+
+      const screenshots = [];
+      const shouldCaptureScreenshot = (mode, stepIndex) => {
+        if (mode === 'off') return false;
+        if (mode === 'final') return stepIndex >= 4;
+        return true;
+      };
+      const debugReport = { steps: [], started_at: new Date().toISOString(), login_url: loginUrl, recording_mode: 'none', screenshot_mode: screenshotMode };
+      const capture = async (step_label, step_index) => {
+        const url = page.url();
+        const title = await page.title().catch(() => '');
+        const base64 = shouldCaptureScreenshot(screenshotMode, step_index)
+          ? await page.screenshot({ encoding: 'base64', fullPage: false }).catch(() => null)
+          : null;
+        debugReport.steps.push({ step_label, step_index, url, title, captured_at: new Date().toISOString(), screenshot: !!base64, screenshot_mode: screenshotMode });
+        if (base64) screenshots.push({ step_label, step_index, base64 });
+      };
+
+      await page.goto(loginUrl, { waitUntil: 'networkidle0', timeout: navTimeout });
+      await capture('01 V7 page loaded', 1);
+
+      await page.waitForSelector(userSel, { visible: true, timeout: selTimeout });
+      await page.waitForSelector(passSel, { visible: true, timeout: selTimeout });
+      await page.waitForSelector(submitSel, { visible: true, timeout: selTimeout });
+
+      let finalUrl = page.url();
+      let markerFound = false;
+      let workingPassword = null;
+      let earlyStop = false;
+      let earlyStopReason = '';
+
+      for (let i = 0; i < passwords.length; i++) {
+        const pass = passwords[i];
+        
+        await page.click(userSel, { clickCount: 3 });
+        await page.type(userSel, user, { delay: Math.floor(Math.random() * 100) + 50 });
+        
+        await page.click(passSel, { clickCount: 3 });
+        await page.type(passSel, pass, { delay: Math.floor(Math.random() * 100) + 50 });
+        
+        await capture('02 V7 creds entered attempt ' + (i+1), 2 + (i*10));
+        
+        await page.click(submitSel);
+        
+        await new Promise(r => setTimeout(r, i === 0 ? 400 : 700));
+        await capture('03 V7 post-submit attempt ' + (i+1), 3 + (i*10));
+        
+        await new Promise(r => setTimeout(r, 4500));
+        
+        const pageText = await page.evaluate(() => document.body.innerText.toLowerCase());
+        if (pageText.includes('disabled')) {
+          earlyStop = true;
+          earlyStopReason = 'disabled';
+          break;
+        }
+        if (!pageText.includes('incorrect password') && !pageText.includes('invalid email') && !pageText.includes('error')) {
+          markerFound = true;
+          workingPassword = pass;
+          break;
+        }
+      }
+
+      finalUrl = page.url();
+      debugReport.finished_at = new Date().toISOString();
+      debugReport.final_url = finalUrl;
+      debugReport.success_marker_found = markerFound;
+      debugReport.v7_active = true;
+      
+      return { data: { finalUrl, markerFound, screenshots, debugReport, workingPassword, earlyStop, earlyStopReason, v7_active: true }, type: 'application/json' };
+    };
+  `;
+
+  const res = await fetch(browserlessUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/javascript' },
+    body: fnBody,
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    return { error: `Browserless V7 ${res.status}: ${errText.slice(0, 400)}` };
+  }
+  const result = await res.json();
+  const { finalUrl, markerFound, screenshots, debugReport, workingPassword, earlyStop, earlyStopReason, v7_active } = result?.data || result || {};
+  return { finalUrl: finalUrl || '', markerFound: !!markerFound, screenshots: screenshots || [], debugReport: debugReport || {}, workingPassword, earlyStop, earlyStopReason, v7_active };
+}
+
+async function legacyPerformLoginOnPage(page, site, username, password, recordingMode, screenshotMode = 'key_steps') {
   const waitMs = site.wait_after_submit_ms ?? 3500;
   const successSelector = site.success_selector || DEFAULT_SUCCESS_SELECTOR;
   const userSel = (site.username_selector || '#username').split(',')[0].trim();
@@ -216,17 +430,17 @@ async function performLoginOnPage(page, site, username, password, recordingMode,
   return { finalUrl, markerFound, screenshots, debugReport, recording_mode: recordingMode || '', videoBinary };
 }
 
-async function attemptLoginWithRecording({ browserlessWsUrl, site, username, password, recordingMode, screenshotMode }) {
+async function legacyAttemptLoginWithRecording({ browserlessWsUrl, site, username, password, recordingMode, screenshotMode }) {
   const browser = await puppeteer.connect({ browserWSEndpoint: browserlessWsUrl, protocolTimeout: 90000 });
   try {
     const page = await browser.newPage();
-    return await performLoginOnPage(page, site, username, password, recordingMode, screenshotMode);
+    return await legacyPerformLoginOnPage(page, site, username, password, recordingMode, screenshotMode);
   } finally {
     await browser.close().catch(() => null);
   }
 }
 
-async function attemptLogin({ browserlessUrl, site, username, password, screenshotMode = 'key_steps' }) {
+async function legacyAttemptLogin({ browserlessUrl, site, username, password, screenshotMode = 'key_steps' }) {
   const waitMs = site.wait_after_submit_ms ?? 3500;
   const successSelector = site.success_selector || DEFAULT_SUCCESS_SELECTOR;
   const userSel = (site.username_selector || '#username').split(',')[0].trim();
@@ -375,42 +589,88 @@ Deno.serve(async (req) => {
     const sessionTimeout = 60000;
     const browserlessUrl = buildBrowserlessUrl(apiKey, site, sessionTimeout);
 
-    // Try primary password, then variants until one works
+    // Combine primary and variant passwords
     const passwords = [password, ...((password_variants || []).filter(Boolean))];
     let lastResult = null;
     let workingPassword = null;
+    let fallbackToLegacy = false;
 
-    for (const pwd of passwords) {
-      await trace(base44, run_id || result_id, `CMD testCredential attempt · password_index=${passwords.indexOf(pwd) + 1}/${passwords.length} · browserless=${recording_mode ? 'websocket' : 'function'}`, 'debug', site_key);
-      const selectedRecordingMode = ['replay', 'video'].includes(recording_mode) ? recording_mode : '';
-      const selectedScreenshotMode = ['off', 'final', 'failures', 'key_steps'].includes(screenshot_mode) ? screenshot_mode : 'key_steps';
+    const selectedRecordingMode = ['replay', 'video'].includes(recording_mode) ? recording_mode : '';
+    const selectedScreenshotMode = ['off', 'final', 'failures', 'key_steps'].includes(screenshot_mode) ? screenshot_mode : 'key_steps';
+
+    // PRIMARY LAYER: V7-V9 Logic
+    try {
+      await trace(base44, run_id || result_id, `CMD testCredential V7 starting · variants=${passwords.length}`, 'debug', site_key);
       const browserlessWsUrl = selectedRecordingMode ? buildBrowserlessWsUrl(apiKey, site, sessionTimeout, selectedRecordingMode) : '';
+      
       let r = selectedRecordingMode
-        ? await attemptLoginWithRecording({ browserlessWsUrl, site, username, password: pwd, recordingMode: selectedRecordingMode, screenshotMode: selectedScreenshotMode })
-        : await attemptLogin({ browserlessUrl, site, username, password: pwd, screenshotMode: selectedScreenshotMode });
+        ? await v7AttemptLoginWithRecording({ browserlessWsUrl, site, username, passwords, recordingMode: selectedRecordingMode, screenshotMode: selectedScreenshotMode })
+        : await v7AttemptLogin({ browserlessUrl, site, username, passwords, screenshotMode: selectedScreenshotMode });
+
       if (r.error && (site.proxy_type || 'residential') === 'residential') {
-        await trace(base44, run_id || result_id, `CMD testCredential primary proxy failed · retrying without proxy · error=${r.error}`, 'warn', site_key);
+        await trace(base44, run_id || result_id, `CMD testCredential V7 primary proxy failed · retrying without proxy · error=${r.error}`, 'warn', site_key);
         const fallbackUrl = buildBrowserlessUrl(apiKey, site, sessionTimeout, 'none');
         const fallbackWsUrl = selectedRecordingMode ? buildBrowserlessWsUrl(apiKey, site, sessionTimeout, selectedRecordingMode, 'none') : '';
         const fallback = selectedRecordingMode
-          ? await attemptLoginWithRecording({ browserlessWsUrl: fallbackWsUrl, site, username, password: pwd, recordingMode: selectedRecordingMode, screenshotMode: selectedScreenshotMode })
-          : await attemptLogin({ browserlessUrl: fallbackUrl, site, username, password: pwd, screenshotMode: selectedScreenshotMode });
+          ? await v7AttemptLoginWithRecording({ browserlessWsUrl: fallbackWsUrl, site, username, passwords, recordingMode: selectedRecordingMode, screenshotMode: selectedScreenshotMode })
+          : await v7AttemptLogin({ browserlessUrl: fallbackUrl, site, username, passwords, screenshotMode: selectedScreenshotMode });
         if (!fallback.error) r = { ...fallback, proxy_fallback_used: true };
       }
-      if (r.error) {
-        return Response.json({ status: 'error', error_message: r.error, elapsed_ms: Date.now() - started }, { status: 500 });
-      }
-      const status = classify(site, r.finalUrl, r.markerFound);
-      lastResult = { ...r, status };
-      await trace(base44, run_id || result_id, `CMD testCredential response · status=${status} · marker=${!!r.markerFound} · final_url=${r.finalUrl || ''} · elapsed=${Date.now() - started}ms`, status === 'working' ? 'success' : 'warn', site_key);
+
+      if (r.error) throw new Error(r.error);
+
+      // V7 early-stop rules evaluate permanent bans directly
+      const status = r.earlyStop ? 'failed' : classify(site, r.finalUrl, r.markerFound);
+      
+      lastResult = { ...r, status, error_message: r.earlyStopReason || '' };
+      workingPassword = r.workingPassword;
+      
+      await trace(base44, run_id || result_id, `CMD testCredential V7 response · status=${lastResult.status} · marker=${!!r.markerFound} · earlyStop=${!!r.earlyStop} · final_url=${r.finalUrl || ''}`, lastResult.status === 'working' ? 'success' : 'warn', site_key);
       await saveEvidence(base44, lastResult, { run_id, result_id, credential_id, username, site_key, recording_dashboard_url: body.recording_dashboard_url });
-      if (status === 'working') {
-        workingPassword = pwd;
-        break;
+
+    } catch (e) {
+      await trace(base44, run_id || result_id, `CMD testCredential V7 failed · error=${e.message} · activating legacy fallback`, 'error', site_key);
+      fallbackToLegacy = true;
+    }
+
+    // SECONDARY FALLBACK LAYER: Legacy State
+    if (fallbackToLegacy) {
+      for (const pwd of passwords) {
+        await trace(base44, run_id || result_id, `CMD testCredential LEGACY attempt · password_index=${passwords.indexOf(pwd) + 1}/${passwords.length}`, 'debug', site_key);
+        const browserlessWsUrl = selectedRecordingMode ? buildBrowserlessWsUrl(apiKey, site, sessionTimeout, selectedRecordingMode) : '';
+        
+        let r = selectedRecordingMode
+          ? await legacyAttemptLoginWithRecording({ browserlessWsUrl, site, username, password: pwd, recordingMode: selectedRecordingMode, screenshotMode: selectedScreenshotMode })
+          : await legacyAttemptLogin({ browserlessUrl, site, username, password: pwd, screenshotMode: selectedScreenshotMode });
+          
+        if (r.error && (site.proxy_type || 'residential') === 'residential') {
+          await trace(base44, run_id || result_id, `CMD testCredential LEGACY primary proxy failed · retrying without proxy`, 'warn', site_key);
+          const fallbackUrl = buildBrowserlessUrl(apiKey, site, sessionTimeout, 'none');
+          const fallbackWsUrl = selectedRecordingMode ? buildBrowserlessWsUrl(apiKey, site, sessionTimeout, selectedRecordingMode, 'none') : '';
+          const fallback = selectedRecordingMode
+            ? await legacyAttemptLoginWithRecording({ browserlessWsUrl: fallbackWsUrl, site, username, password: pwd, recordingMode: selectedRecordingMode, screenshotMode: selectedScreenshotMode })
+            : await legacyAttemptLogin({ browserlessUrl: fallbackUrl, site, username, password: pwd, screenshotMode: selectedScreenshotMode });
+          if (!fallback.error) r = { ...fallback, proxy_fallback_used: true };
+        }
+        
+        if (r.error) {
+          return Response.json({ status: 'error', error_message: r.error, elapsed_ms: Date.now() - started }, { status: 500 });
+        }
+        
+        const status = classify(site, r.finalUrl, r.markerFound);
+        lastResult = { ...r, status, legacy_fallback_used: true };
+        
+        await trace(base44, run_id || result_id, `CMD testCredential LEGACY response · status=${status} · marker=${!!r.markerFound}`, status === 'working' ? 'success' : 'warn', site_key);
+        await saveEvidence(base44, lastResult, { run_id, result_id, credential_id, username, site_key, recording_dashboard_url: body.recording_dashboard_url });
+        
+        if (status === 'working') {
+          workingPassword = pwd;
+          break;
+        }
       }
     }
 
-    await trace(base44, run_id || result_id, `CMD testCredential complete · status=${lastResult.status} · tried=${passwords.length} · elapsed=${Date.now() - started}ms`, lastResult.status === 'working' ? 'success' : 'warn', site_key);
+    await trace(base44, run_id || result_id, `CMD testCredential complete · status=${lastResult.status} · v7_active=${!fallbackToLegacy} · elapsed=${Date.now() - started}ms`, lastResult.status === 'working' ? 'success' : 'warn', site_key);
 
     return Response.json({
       status: lastResult.status,
