@@ -267,6 +267,14 @@ Deno.serve(async (req) => {
     });
 
     await trace(base44, run_id, `CMD runWorker response · done=${isDone} · processed=${claimed.length} · pending=${pendingCount}`, isDone ? 'success' : 'debug', run.site_key);
+
+    await base44.asServiceRole.entities.AuditLog.create({
+      function_name: 'runWorker',
+      status: isDone ? 'success' : 'running',
+      run_id: String(run_id),
+      metadata: JSON.stringify({ site: run.site_key, processed: claimed.length, pending: pendingCount, worker: workerId })
+    }).catch(() => {});
+
     return Response.json({ done: isDone, processed: claimed.length });
   } catch (error) {
     if (runIdForCleanup && base44ForCleanup) {
@@ -275,6 +283,12 @@ Deno.serve(async (req) => {
         if (cleanupRuns[0]) {
           await base44ForCleanup.asServiceRole.entities.TestRun.update(runIdForCleanup, { worker_id: null, claimed_at: null });
         }
+        await base44ForCleanup.asServiceRole.entities.AuditLog.create({
+          function_name: 'runWorker',
+          status: 'error',
+          run_id: String(runIdForCleanup),
+          metadata: JSON.stringify({ error: error.message })
+        });
       } catch (_) {}
     }
     return Response.json({ error: error.message }, { status: 500 });

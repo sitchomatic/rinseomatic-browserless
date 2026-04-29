@@ -733,6 +733,13 @@ Deno.serve(async (req) => {
 
     await trace(base44, run_id || result_id, `CMD testCredential complete · status=${lastResult.status} · v7_active=${!fallbackToLegacy} · elapsed=${Date.now() - started}ms`, lastResult.status === 'working' ? 'success' : 'warn', site_key);
 
+    await base44.asServiceRole.entities.AuditLog.create({
+      function_name: 'testCredential',
+      status: lastResult.status === 'working' ? 'success' : (lastResult.status === 'error' ? 'error' : 'failed'),
+      run_id: String(run_id || result_id || 'manual'),
+      metadata: JSON.stringify({ site: site_key, username, tried: passwords.length, proxy_fallback: !!lastResult.proxy_fallback_used, elapsed_ms: Date.now() - started })
+    }).catch(() => {});
+
     return Response.json({
       status: lastResult.status,
       final_url: lastResult.finalUrl,
@@ -744,6 +751,17 @@ Deno.serve(async (req) => {
     });
 
   } catch (error) {
-    return Response.json({ status: 'error', error_message: error.message, elapsed_ms: Date.now() - started }, { status: 500 });
+    const elapsed = Date.now() - started;
+    try {
+      const base44 = createClientFromRequest(req);
+      const body = await req.json().catch(() => ({}));
+      await base44.asServiceRole.entities.AuditLog.create({
+        function_name: 'testCredential',
+        status: 'error',
+        run_id: String(body.run_id || body.result_id || 'manual'),
+        metadata: JSON.stringify({ error: error.message, elapsed_ms: elapsed })
+      });
+    } catch (_) {}
+    return Response.json({ status: 'error', error_message: error.message, elapsed_ms: elapsed }, { status: 500 });
   }
 });
