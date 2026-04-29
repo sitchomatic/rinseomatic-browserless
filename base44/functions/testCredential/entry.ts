@@ -565,12 +565,18 @@ async function legacyAttemptLogin({ browserlessUrl, site, username, password, sc
       await capture('04 after submit', 4);
 
       const finalUrl = page.url();
-      const markerFound = await page.evaluate((sel) => {
+      let markerFound = await page.evaluate((sel) => {
         const el = document.querySelector(sel);
         if (!el) return false;
         const rect = el.getBoundingClientRect();
         return rect.width > 0 && rect.height > 0;
       }, successSel);
+
+      // Support legacy early-exit URL logic
+      const loginMarker = ${JSON.stringify(site.login_url_marker || '/login')};
+      const successUrlContains = ${JSON.stringify(site.success_url_contains || '')};
+      if (!markerFound && successUrlContains && finalUrl.includes(successUrlContains)) markerFound = true;
+      if (loginMarker && finalUrl.includes(loginMarker)) markerFound = false;
 
       debugReport.finished_at = new Date().toISOString();
       debugReport.final_url = finalUrl;
