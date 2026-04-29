@@ -364,6 +364,7 @@ async function v7AttemptLogin({ browserlessUrl, site, username, passwords, scree
         }
 
         if (!pageText.includes('incorrect password') && !pageText.includes('invalid email') && !pageText.includes('error')) {
+          markerFound = true;
           workingPassword = pass;
           break;
         }
