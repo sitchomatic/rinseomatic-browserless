@@ -142,9 +142,9 @@ function decodeRecordingValue(value) {
 }
 
 async function v7PerformLoginOnPage(page, site, username, passwords, recordingMode, screenshotMode = 'key_steps') {
-  const userSel = (site.username_selector || '#username').split(',')[0].trim();
-  const passSel = (site.password_selector || '#password').split(',')[0].trim();
-  const submitSel = (site.submit_selector || '#loginSubmit').split(',')[0].trim();
+  const userSel = site.username_selector || '#username';
+  const passSel = site.password_selector || '#password';
+  const submitSel = site.submit_selector || '#loginSubmit';
   const successSel = site.success_selector || DEFAULT_SUCCESS_SELECTOR;
   const navTimeout = site.navigation_timeout_ms ?? 30000;
   const selTimeout = site.selector_timeout_ms ?? 10000;
@@ -265,9 +265,9 @@ async function v7AttemptLoginWithRecording({ browserlessWsUrl, site, username, p
 }
 
 async function v7AttemptLogin({ browserlessUrl, site, username, passwords, screenshotMode = 'key_steps' }) {
-  const userSel = (site.username_selector || '#username').split(',')[0].trim();
-  const passSel = (site.password_selector || '#password').split(',')[0].trim();
-  const submitSel = (site.submit_selector || '#loginSubmit').split(',')[0].trim();
+  const userSel = site.username_selector || '#username';
+  const passSel = site.password_selector || '#password';
+  const submitSel = site.submit_selector || '#loginSubmit';
   const successSel = site.success_selector || DEFAULT_SUCCESS_SELECTOR;
   const waitMs = site.wait_after_submit_ms ?? 4500;
   const typeDelay = site.type_delay_ms ?? 50;
@@ -363,11 +363,7 @@ async function v7AttemptLogin({ browserlessUrl, site, username, passwords, scree
           break;
         }
 
-        if (!pageText.includes('incorrect password') && !pageText.includes('invalid email') && !pageText.includes('error')) {
-          markerFound = true;
-          workingPassword = pass;
-          break;
-        }
+        // Strict DOM-based success validation - bypassing unreliable text heuristics
       }
 
       finalUrl = page.url();
@@ -398,9 +394,9 @@ async function v7AttemptLogin({ browserlessUrl, site, username, passwords, scree
 async function legacyPerformLoginOnPage(page, site, username, password, recordingMode, screenshotMode = 'key_steps') {
   const waitMs = site.wait_after_submit_ms ?? 3500;
   const successSelector = site.success_selector || DEFAULT_SUCCESS_SELECTOR;
-  const userSel = (site.username_selector || '#username').split(',')[0].trim();
-  const passSel = (site.password_selector || '#password').split(',')[0].trim();
-  const submitSel = (site.submit_selector || '#loginSubmit').split(',')[0].trim();
+  const userSel = site.username_selector || '#username';
+  const passSel = site.password_selector || '#password';
+  const submitSel = site.submit_selector || '#loginSubmit';
   const navTimeout = site.navigation_timeout_ms ?? 30000;
   const selTimeout = site.selector_timeout_ms ?? 10000;
   const typeDelay = site.type_delay_ms ?? 30;
@@ -483,9 +479,9 @@ async function legacyAttemptLoginWithRecording({ browserlessWsUrl, site, usernam
 async function legacyAttemptLogin({ browserlessUrl, site, username, password, screenshotMode = 'key_steps' }) {
   const waitMs = site.wait_after_submit_ms ?? 3500;
   const successSelector = site.success_selector || DEFAULT_SUCCESS_SELECTOR;
-  const userSel = (site.username_selector || '#username').split(',')[0].trim();
-  const passSel = (site.password_selector || '#password').split(',')[0].trim();
-  const submitSel = (site.submit_selector || '#loginSubmit').split(',')[0].trim();
+  const userSel = site.username_selector || '#username';
+  const passSel = site.password_selector || '#password';
+  const submitSel = site.submit_selector || '#loginSubmit';
   const navTimeout = site.navigation_timeout_ms ?? 30000;
   const selTimeout = site.selector_timeout_ms ?? 10000;
   const typeDelay = site.type_delay_ms ?? 30;
