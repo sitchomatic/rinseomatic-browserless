@@ -239,10 +239,7 @@ async function v7PerformLoginOnPage(page, site, username, passwords, recordingMo
       break;
     }
 
-    if (!pageText.includes('incorrect password') && !pageText.includes('invalid email') && !pageText.includes('error')) {
-      workingPassword = pass;
-      break;
-    }
+    // Strict DOM-based success validation - bypassing unreliable text heuristics
   }
 
   finalUrl = page.url();
