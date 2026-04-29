@@ -218,8 +218,17 @@ async function v7PerformLoginOnPage(page, site, username, passwords, recordingMo
       return el ? el.getBoundingClientRect().width > 0 : false;
     }, successSel);
 
-    if (isSuccessSelFound) {
-      markerFound = true;
+    const currentUrl = page.url();
+    const loginMarker = site.login_url_marker || '/login';
+    const successUrlContains = site.success_url_contains || '';
+
+    let isWorking = false;
+    if (isSuccessSelFound) isWorking = true;
+    if (!isWorking && successUrlContains && currentUrl.includes(successUrlContains)) isWorking = true;
+    if (loginMarker && currentUrl.includes(loginMarker)) isWorking = false;
+
+    if (isWorking) {
+      markerFound = isSuccessSelFound;
       workingPassword = pass;
       break;
     }
@@ -291,6 +300,8 @@ async function v7AttemptLogin({ browserlessUrl, site, username, passwords, scree
       const user = ${JSON.stringify(username)};
       const passwords = ${JSON.stringify(passwords)};
       const screenshotMode = ${JSON.stringify(screenshotMode)};
+      const loginMarker = ${JSON.stringify(site.login_url_marker || '/login')};
+      const successUrlContains = ${JSON.stringify(site.success_url_contains || '')};
 
       await page.setViewport({ width: vw, height: vh });
       if (userAgent) await page.setUserAgent(userAgent);
@@ -351,8 +362,14 @@ async function v7AttemptLogin({ browserlessUrl, site, username, passwords, scree
           return el ? el.getBoundingClientRect().width > 0 : false;
         }, successSel);
 
-        if (isSuccessSelFound) {
-          markerFound = true;
+        const currentUrl = page.url();
+        let isWorking = false;
+        if (isSuccessSelFound) isWorking = true;
+        if (!isWorking && successUrlContains && currentUrl.includes(successUrlContains)) isWorking = true;
+        if (loginMarker && currentUrl.includes(loginMarker)) isWorking = false;
+
+        if (isWorking) {
+          markerFound = isSuccessSelFound;
           workingPassword = pass;
           break;
         }
