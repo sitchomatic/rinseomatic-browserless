@@ -142,11 +142,12 @@ function decodeRecordingValue(value) {
 }
 
 async function v7PerformLoginOnPage(page, site, username, passwords, recordingMode, screenshotMode = 'key_steps') {
-  const userSel = '#username';
-  const passSel = '#password';
-  const submitSel = '#loginSubmit';
+  const userSel = (site.username_selector || '#username').split(',')[0].trim();
+  const passSel = (site.password_selector || '#password').split(',')[0].trim();
+  const submitSel = (site.submit_selector || '#loginSubmit').split(',')[0].trim();
   const navTimeout = site.navigation_timeout_ms ?? 30000;
   const selTimeout = site.selector_timeout_ms ?? 10000;
+  const waitMs = site.wait_after_submit_ms ?? 4500;
   const vw = site.viewport_width || 1920;
   const vh = site.viewport_height || 1080;
   const userAgent = site.user_agent || '';
@@ -205,7 +206,7 @@ async function v7PerformLoginOnPage(page, site, username, passwords, recordingMo
     await new Promise(r => setTimeout(r, i === 0 ? 400 : 700));
     await capture('03 V7 post-submit attempt ' + (i+1), 3 + (i*10));
     
-    await new Promise(r => setTimeout(r, 4500));
+    await new Promise(r => setTimeout(r, waitMs));
     
     const pageText = await page.evaluate(() => document.body.innerText.toLowerCase());
     if (pageText.includes('disabled')) {
@@ -249,12 +250,18 @@ async function v7AttemptLoginWithRecording({ browserlessWsUrl, site, username, p
 }
 
 async function v7AttemptLogin({ browserlessUrl, site, username, passwords, screenshotMode = 'key_steps' }) {
+  const userSel = (site.username_selector || '#username').split(',')[0].trim();
+  const passSel = (site.password_selector || '#password').split(',')[0].trim();
+  const submitSel = (site.submit_selector || '#loginSubmit').split(',')[0].trim();
+  const waitMs = site.wait_after_submit_ms ?? 4500;
+
   const fnBody = `
     export default async ({ page }) => {
       const loginUrl = ${JSON.stringify(site.login_url)};
-      const userSel = '#username';
-      const passSel = '#password';
-      const submitSel = '#loginSubmit';
+      const userSel = ${JSON.stringify(userSel)};
+      const passSel = ${JSON.stringify(passSel)};
+      const submitSel = ${JSON.stringify(submitSel)};
+      const waitMs = ${waitMs};
       const navTimeout = ${site.navigation_timeout_ms ?? 30000};
       const selTimeout = ${site.selector_timeout_ms ?? 10000};
       const vw = ${site.viewport_width || 1920};
@@ -315,7 +322,7 @@ async function v7AttemptLogin({ browserlessUrl, site, username, passwords, scree
         await new Promise(r => setTimeout(r, i === 0 ? 400 : 700));
         await capture('03 V7 post-submit attempt ' + (i+1), 3 + (i*10));
         
-        await new Promise(r => setTimeout(r, 4500));
+        await new Promise(r => setTimeout(r, waitMs));
         
         const pageText = await page.evaluate(() => document.body.innerText.toLowerCase());
         if (pageText.includes('disabled')) {
