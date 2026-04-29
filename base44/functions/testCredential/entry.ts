@@ -366,7 +366,7 @@ async function v7AttemptLogin({ browserlessUrl, site, username, passwords, scree
         if (loginMarker && currentUrl.includes(loginMarker)) isWorking = false;
 
         if (isWorking) {
-          markerFound = isSuccessSelFound;
+          markerFound = true;
           workingPassword = pass;
           break;
         }
@@ -459,12 +459,17 @@ async function legacyPerformLoginOnPage(page, site, username, password, recordin
   await capture('04 after submit', 4);
 
   const finalUrl = page.url();
-  const markerFound = await page.evaluate((sel) => {
+  let markerFound = await page.evaluate((sel) => {
     const el = document.querySelector(sel);
     if (!el) return false;
     const rect = el.getBoundingClientRect();
     return rect.width > 0 && rect.height > 0;
   }, successSelector);
+
+  const loginMarker = site.login_url_marker || '/login';
+  const successUrlContains = site.success_url_contains || '';
+  if (!markerFound && successUrlContains && finalUrl.includes(successUrlContains)) markerFound = true;
+  if (loginMarker && finalUrl.includes(loginMarker)) markerFound = false;
 
   let videoBinary = null;
   if (recordingMode === 'video' && recordingStarted) {
