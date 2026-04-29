@@ -145,10 +145,12 @@ async function v7PerformLoginOnPage(page, site, username, passwords, recordingMo
   const userSel = (site.username_selector || '#username').split(',')[0].trim();
   const passSel = (site.password_selector || '#password').split(',')[0].trim();
   const submitSel = (site.submit_selector || '#loginSubmit').split(',')[0].trim();
+  const successSel = site.success_selector || DEFAULT_SUCCESS_SELECTOR;
   const navTimeout = site.navigation_timeout_ms ?? 30000;
   const selTimeout = site.selector_timeout_ms ?? 10000;
   const waitMs = site.wait_after_submit_ms ?? 4500;
   const waitUntil = site.wait_until || 'networkidle0';
+  const typeDelay = site.type_delay_ms ?? 50;
   const vw = site.viewport_width || 1920;
   const vh = site.viewport_height || 1080;
   const userAgent = site.user_agent || '';
@@ -195,10 +197,10 @@ async function v7PerformLoginOnPage(page, site, username, passwords, recordingMo
     const pass = passwords[i];
     
     await page.click(userSel, { clickCount: 3 });
-    await page.type(userSel, username, { delay: Math.floor(Math.random() * 100) + 50 });
+    await page.type(userSel, username, { delay: typeDelay || (Math.floor(Math.random() * 100) + 50) });
     
     await page.click(passSel, { clickCount: 3 });
-    await page.type(passSel, pass, { delay: Math.floor(Math.random() * 100) + 50 });
+    await page.type(passSel, pass, { delay: typeDelay || (Math.floor(Math.random() * 100) + 50) });
     
     await capture('02 V7 creds entered attempt ' + (i+1), 2 + (i*10));
     
@@ -210,13 +212,25 @@ async function v7PerformLoginOnPage(page, site, username, passwords, recordingMo
     await new Promise(r => setTimeout(r, waitMs));
     
     const pageText = await page.evaluate(() => document.body.innerText.toLowerCase());
-    if (pageText.includes('disabled')) {
+    
+    const isSuccessSelFound = await page.evaluate((sel) => {
+      const el = document.querySelector(sel);
+      return el ? el.getBoundingClientRect().width > 0 : false;
+    }, successSel);
+
+    if (isSuccessSelFound) {
+      markerFound = true;
+      workingPassword = pass;
+      break;
+    }
+    
+    if (pageText.includes('disabled') || pageText.includes('blocked')) {
       earlyStop = true;
       earlyStopReason = 'disabled';
       break;
     }
+
     if (!pageText.includes('incorrect password') && !pageText.includes('invalid email') && !pageText.includes('error')) {
-      markerFound = true;
       workingPassword = pass;
       break;
     }
@@ -254,7 +268,9 @@ async function v7AttemptLogin({ browserlessUrl, site, username, passwords, scree
   const userSel = (site.username_selector || '#username').split(',')[0].trim();
   const passSel = (site.password_selector || '#password').split(',')[0].trim();
   const submitSel = (site.submit_selector || '#loginSubmit').split(',')[0].trim();
+  const successSel = site.success_selector || DEFAULT_SUCCESS_SELECTOR;
   const waitMs = site.wait_after_submit_ms ?? 4500;
+  const typeDelay = site.type_delay_ms ?? 50;
 
   const fnBody = `
     export default async ({ page }) => {
@@ -262,7 +278,9 @@ async function v7AttemptLogin({ browserlessUrl, site, username, passwords, scree
       const userSel = ${JSON.stringify(userSel)};
       const passSel = ${JSON.stringify(passSel)};
       const submitSel = ${JSON.stringify(submitSel)};
+      const successSel = ${JSON.stringify(successSel)};
       const waitMs = ${waitMs};
+      const typeDelay = ${typeDelay};
       const navTimeout = ${site.navigation_timeout_ms ?? 30000};
       const selTimeout = ${site.selector_timeout_ms ?? 10000};
       const waitUntil = ${JSON.stringify(site.wait_until || 'networkidle0')};
@@ -312,10 +330,10 @@ async function v7AttemptLogin({ browserlessUrl, site, username, passwords, scree
         const pass = passwords[i];
         
         await page.click(userSel, { clickCount: 3 });
-        await page.type(userSel, user, { delay: Math.floor(Math.random() * 100) + 50 });
+        await page.type(userSel, user, { delay: typeDelay || (Math.floor(Math.random() * 100) + 50) });
         
         await page.click(passSel, { clickCount: 3 });
-        await page.type(passSel, pass, { delay: Math.floor(Math.random() * 100) + 50 });
+        await page.type(passSel, pass, { delay: typeDelay || (Math.floor(Math.random() * 100) + 50) });
         
         await capture('02 V7 creds entered attempt ' + (i+1), 2 + (i*10));
         
@@ -327,13 +345,25 @@ async function v7AttemptLogin({ browserlessUrl, site, username, passwords, scree
         await new Promise(r => setTimeout(r, waitMs));
         
         const pageText = await page.evaluate(() => document.body.innerText.toLowerCase());
-        if (pageText.includes('disabled')) {
+        
+        const isSuccessSelFound = await page.evaluate((sel) => {
+          const el = document.querySelector(sel);
+          return el ? el.getBoundingClientRect().width > 0 : false;
+        }, successSel);
+
+        if (isSuccessSelFound) {
+          markerFound = true;
+          workingPassword = pass;
+          break;
+        }
+        
+        if (pageText.includes('disabled') || pageText.includes('blocked')) {
           earlyStop = true;
           earlyStopReason = 'disabled';
           break;
         }
+
         if (!pageText.includes('incorrect password') && !pageText.includes('invalid email') && !pageText.includes('error')) {
-          markerFound = true;
           workingPassword = pass;
           break;
         }
