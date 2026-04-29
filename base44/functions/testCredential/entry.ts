@@ -148,6 +148,7 @@ async function v7PerformLoginOnPage(page, site, username, passwords, recordingMo
   const navTimeout = site.navigation_timeout_ms ?? 30000;
   const selTimeout = site.selector_timeout_ms ?? 10000;
   const waitMs = site.wait_after_submit_ms ?? 4500;
+  const waitUntil = site.wait_until || 'networkidle0';
   const vw = site.viewport_width || 1920;
   const vh = site.viewport_height || 1080;
   const userAgent = site.user_agent || '';
@@ -177,7 +178,7 @@ async function v7PerformLoginOnPage(page, site, username, passwords, recordingMo
     if (base64) screenshots.push({ step_label, step_index, base64 });
   };
 
-  await page.goto(site.login_url, { waitUntil: 'networkidle0', timeout: navTimeout });
+  await page.goto(site.login_url, { waitUntil, timeout: navTimeout });
   await capture('01 V7 page loaded', 1);
 
   await page.waitForSelector(userSel, { visible: true, timeout: selTimeout });
@@ -264,6 +265,7 @@ async function v7AttemptLogin({ browserlessUrl, site, username, passwords, scree
       const waitMs = ${waitMs};
       const navTimeout = ${site.navigation_timeout_ms ?? 30000};
       const selTimeout = ${site.selector_timeout_ms ?? 10000};
+      const waitUntil = ${JSON.stringify(site.wait_until || 'networkidle0')};
       const vw = ${site.viewport_width || 1920};
       const vh = ${site.viewport_height || 1080};
       const userAgent = ${JSON.stringify(site.user_agent || '')};
@@ -293,7 +295,7 @@ async function v7AttemptLogin({ browserlessUrl, site, username, passwords, scree
         if (base64) screenshots.push({ step_label, step_index, base64 });
       };
 
-      await page.goto(loginUrl, { waitUntil: 'networkidle0', timeout: navTimeout });
+      await page.goto(loginUrl, { waitUntil, timeout: navTimeout });
       await capture('01 V7 page loaded', 1);
 
       await page.waitForSelector(userSel, { visible: true, timeout: selTimeout });
