@@ -14,6 +14,7 @@ import Settings from '@/pages/Settings';
 import Dashboard from '@/pages/Dashboard';
 import Terminal from '@/pages/Terminal';
 import Activity from '@/pages/Activity';
+import APIKeys from '@/pages/APIKeys';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -41,6 +42,7 @@ const AuthenticatedApp = () => {
         <Route path="/settings" element={<Settings />} />
         <Route path="/terminal" element={<Terminal />} />
         <Route path="/activity" element={<Activity />} />
+        <Route path="/api-keys" element={<APIKeys />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

@@ -116,10 +116,19 @@ Deno.serve(async (req) => {
       locale: site.accept_language || 'unset',
     }));
 
+    let browserlessKey = Deno.env.get('BROWSERLESS_API_KEY');
+    let nordKey = Deno.env.get('NORDVPN_ACCESS_TOKEN');
+    try {
+      const bSecrets = await base44.asServiceRole.entities.AppSecret.filter({ name: 'BROWSERLESS_API_KEY' });
+      if (bSecrets.length > 0) browserlessKey = bSecrets[0].value;
+      const nSecrets = await base44.asServiceRole.entities.AppSecret.filter({ name: 'NORDVPN_ACCESS_TOKEN' });
+      if (nSecrets.length > 0) nordKey = nSecrets[0].value;
+    } catch (e) {}
+
     await trace(base44, 'CMD networkDiagnostics external checks start · browserless+nordlynx');
     const [browserless, nordlynx] = await Promise.all([
-      checkBrowserless(Deno.env.get('BROWSERLESS_API_KEY')),
-      checkNord(Deno.env.get('NORDVPN_ACCESS_TOKEN'), country),
+      checkBrowserless(browserlessKey),
+      checkNord(nordKey, country),
     ]);
 
     const checks = [browserless, nordlynx, ...siteChecks.map((site) => ({ ok: site.ok, label: `${site.label} AU proxy defaults`, detail: `${site.proxy} · ${site.locale}` }))];

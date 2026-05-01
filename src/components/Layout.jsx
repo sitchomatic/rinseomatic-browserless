@@ -1,6 +1,6 @@
 import React from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { KeyRound, Play, Settings as SettingsIcon, Shield, LayoutDashboard, Terminal, Activity as ActivityIcon } from "lucide-react";
+import { KeyRound, Play, Settings as SettingsIcon, Shield, LayoutDashboard, Terminal, Activity as ActivityIcon, Key } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AuditEventTracker from "@/components/audit/AuditEventTracker";
 import NetworkTerminalTracker from "@/components/terminal/NetworkTerminalTracker";
@@ -10,6 +10,7 @@ const NAV = [
   { to: "/credentials", label: "Credentials", icon: KeyRound },
   { to: "/runs", label: "Test runs", icon: Play },
   { to: "/activity", label: "Activity", icon: ActivityIcon },
+  { to: "/api-keys", label: "API Keys", icon: Key },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
   { to: "/terminal", label: "Terminal", icon: Terminal },
 ];
@@ -19,6 +20,7 @@ const TITLES = {
   "/credentials": "Credentials · Credential Tester",
   "/runs": "Test runs · Credential Tester",
   "/activity": "Activity · Credential Tester",
+  "/api-keys": "API Keys · Credential Tester",
   "/settings": "Settings · Credential Tester",
   "/terminal": "Terminal · Credential Tester",
 };

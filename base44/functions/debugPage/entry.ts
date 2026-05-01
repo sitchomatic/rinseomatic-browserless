@@ -13,7 +13,11 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Valid URL required' }, { status: 400 });
     }
 
-    const apiKey = Deno.env.get('BROWSERLESS_API_KEY');
+    let apiKey = Deno.env.get('BROWSERLESS_API_KEY');
+    try {
+      const secrets = await base44.asServiceRole.entities.AppSecret.filter({ name: 'BROWSERLESS_API_KEY' });
+      if (secrets.length > 0) apiKey = secrets[0].value;
+    } catch (e) {}
     if (!apiKey) return Response.json({ error: 'BROWSERLESS_API_KEY not set' }, { status: 500 });
 
     const { proxy_country } = body;

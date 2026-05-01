@@ -150,7 +150,11 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
-    const token = Deno.env.get('NORDVPN_ACCESS_TOKEN');
+    let token = Deno.env.get('NORDVPN_ACCESS_TOKEN');
+    try {
+      const secrets = await base44.asServiceRole.entities.AppSecret.filter({ name: 'NORDVPN_ACCESS_TOKEN' });
+      if (secrets.length > 0) token = secrets[0].value;
+    } catch (e) {}
     if (!token) return Response.json({ error: 'Missing NORDVPN_ACCESS_TOKEN secret' }, { status: 500 });
 
     const body = await req.json().catch(() => ({}));
