@@ -247,7 +247,7 @@ async function v7PerformLoginOnPage(page, site, username, passwords, recordingMo
   let videoBinary = null;
   if (recordingMode === 'video' && recordingStarted) {
     const response = await cdp.send('Browserless.stopRecording').catch(() => null);
-    videoBinary = decodeRecordingValue(response?.value || '');
+    videoBinary = decodeRecordingValue(response?.data || response?.value || '');
   }
   if (recordingMode === 'replay') await cdp.send('Browserless.stopSessionRecording').catch(() => null);
   await cdp?.detach().catch(() => null);
@@ -476,7 +476,7 @@ async function legacyPerformLoginOnPage(page, site, username, password, recordin
   let videoBinary = null;
   if (recordingMode === 'video' && recordingStarted) {
     const response = await cdp.send('Browserless.stopRecording').catch(() => null);
-    videoBinary = decodeRecordingValue(response?.value || '');
+    videoBinary = decodeRecordingValue(response?.data || response?.value || '');
   }
   if (recordingMode === 'replay') await cdp.send('Browserless.stopSessionRecording').catch(() => null);
   await cdp?.detach().catch(() => null);

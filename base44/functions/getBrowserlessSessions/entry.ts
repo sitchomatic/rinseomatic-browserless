@@ -25,7 +25,18 @@ Deno.serve(async (req) => {
         const text = await jsonRes.text();
         // The API might return text like "You've reached..." if rate limited
         if (text.startsWith('[')) {
-          activePages = JSON.parse(text);
+          const parsedPages = JSON.parse(text);
+          activePages = parsedPages.map(page => {
+            if (page.devtoolsFrontendUrl) {
+              const sep = page.devtoolsFrontendUrl.includes('?') ? '&' : '?';
+              page.devtoolsFrontendUrl = `${page.devtoolsFrontendUrl}${sep}token=${encodeURIComponent(apiKey)}`;
+            }
+            if (page.webSocketDebuggerUrl) {
+              const sep = page.webSocketDebuggerUrl.includes('?') ? '&' : '?';
+              page.webSocketDebuggerUrl = `${page.webSocketDebuggerUrl}${sep}token=${encodeURIComponent(apiKey)}`;
+            }
+            return page;
+          });
         }
       } catch (e) {}
     }
@@ -36,7 +47,14 @@ Deno.serve(async (req) => {
       try {
         const text = await sessionsRes.text();
         if (text.startsWith('[')) {
-          activeSessions = JSON.parse(text);
+          const parsedSessions = JSON.parse(text);
+          activeSessions = parsedSessions.map(sess => {
+            if (sess.devtoolsUrl) {
+              const sep = sess.devtoolsUrl.includes('?') ? '&' : '?';
+              sess.devtoolsUrl = `${sess.devtoolsUrl}${sep}token=${encodeURIComponent(apiKey)}`;
+            }
+            return sess;
+          });
         }
       } catch (e) {}
     }

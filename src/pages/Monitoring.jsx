@@ -125,7 +125,7 @@ function BrowserlessSection() {
                   </div>
                   {page.devtoolsFrontendUrl ? (
                     <Button variant="secondary" size="sm" className="w-full gap-2 mt-2 border-border hover:bg-secondary" asChild>
-                      <a href={`https://production-sfo.browserless.io${page.devtoolsFrontendUrl}`} target="_blank" rel="noopener noreferrer">
+                      <a href={`https://production-sfo.browserless.io${page.devtoolsFrontendUrl.startsWith('/') ? '' : '/'}${page.devtoolsFrontendUrl}`} target="_blank" rel="noopener noreferrer">
                         <Eye className="h-3.5 w-3.5" /> Live Inspector
                       </a>
                     </Button>
@@ -152,7 +152,7 @@ function BrowserlessSection() {
                   </div>
                   {sess.devtoolsUrl ? (
                     <Button variant="outline" size="sm" className="w-full gap-2 mt-2 border-primary/30 text-primary hover:bg-primary/10" asChild>
-                      <a href={sess.devtoolsUrl} target="_blank" rel="noopener noreferrer">
+                      <a href={sess.devtoolsUrl.startsWith('http') ? sess.devtoolsUrl : `https://production-sfo.browserless.io${sess.devtoolsUrl.startsWith('/') ? '' : '/'}${sess.devtoolsUrl}`} target="_blank" rel="noopener noreferrer">
                         <ExternalLink className="h-3.5 w-3.5" /> Live View
                       </a>
                     </Button>
