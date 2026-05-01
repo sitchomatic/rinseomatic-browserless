@@ -88,9 +88,13 @@ export default function RunDetail() {
     mutationFn: async () => {
       const failed = results.filter((r) => r.status === "failed" || r.status === "error");
       await Promise.all(failed.map((r) => base44.entities.TestResult.update(r.id, { status: "queued", error_message: null, final_url: null, success_marker_found: null })));
+      
+      const workingCount = results.filter((r) => r.status === "working").length;
+      
       await base44.entities.TestRun.update(id, {
         status: "queued",
         pending_count: failed.length,
+        working_count: workingCount,
         failed_count: 0,
         error_count: 0,
         ended_at: null,

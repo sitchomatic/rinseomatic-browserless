@@ -1,19 +1,20 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Pencil, PlayCircle, Trash2 } from "lucide-react";
+import { Pencil, PlayCircle, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import StatusPill from "@/components/shared/StatusPill";
 import { format } from "date-fns";
 
-const PAGE_SIZE = 250;
+const PAGE_SIZE = 100;
 
 export default function CredentialsTable({ items, selected, onToggle, onToggleAll, onDelete, onEdit, onTest, testingId }) {
-  const [visibleCount, setVisibleCount] = React.useState(PAGE_SIZE);
-  const visibleItems = React.useMemo(() => items.slice(0, visibleCount), [items, visibleCount]);
-  const hiddenCount = Math.max(0, items.length - visibleItems.length);
+  const [page, setPage] = React.useState(1);
+  
+  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  const visibleItems = React.useMemo(() => items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [items, page]);
 
   React.useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
+    setPage(1);
   }, [items]);
 
   const allChecked = items.length > 0 && items.every((item) => selected.has(item.id));
@@ -67,11 +68,20 @@ export default function CredentialsTable({ items, selected, onToggle, onToggleAl
             </div>
           </div>
         ))}
-        {hiddenCount > 0 && (
-          <div className="px-4 py-3 text-center bg-secondary/20">
-            <Button variant="outline" size="sm" onClick={() => setVisibleCount((count) => Math.min(items.length, count + PAGE_SIZE))}>
-              Show {Math.min(PAGE_SIZE, hiddenCount)} more · {hiddenCount} hidden
-            </Button>
+        {totalPages > 1 && (
+          <div className="px-4 py-3 flex items-center justify-between bg-secondary/20 border-t border-border">
+            <div className="text-xs text-muted-foreground">
+              Showing {(page - 1) * PAGE_SIZE + 1} to {Math.min(page * PAGE_SIZE, items.length)} of {items.length}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="gap-1 h-8">
+                <ChevronLeft className="h-3.5 w-3.5" /> Prev
+              </Button>
+              <div className="text-xs font-mono px-2 text-muted-foreground">Page {page} of {totalPages}</div>
+              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="gap-1 h-8">
+                Next <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
         )}
       </div>
