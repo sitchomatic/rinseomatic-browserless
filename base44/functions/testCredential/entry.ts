@@ -170,6 +170,19 @@ async function v7PerformLoginOnPage(page, site, username, passwords, recordingMo
   const screenshots = [];
   const debugReport = { steps: [], started_at: new Date().toISOString(), login_url: site.login_url, recording_mode: recordingMode || 'none', screenshot_mode: screenshotMode };
   
+  let pollInterval = null;
+  let pollIndex = 100;
+  if (screenshotMode === 'poll') {
+    pollInterval = setInterval(() => {
+      page.screenshot({ encoding: 'base64', fullPage: false }).then(base64 => {
+        if (base64) {
+          screenshots.push({ step_label: 'Poll ' + pollIndex, step_index: pollIndex, base64 });
+          pollIndex++;
+        }
+      }).catch(() => {});
+    }, 500);
+  }
+
   const capture = async (step_label, step_index) => {
     const url = page.url();
     const title = await page.title().catch(() => '');
@@ -242,6 +255,7 @@ async function v7PerformLoginOnPage(page, site, username, passwords, recordingMo
     // Strict DOM-based success validation - bypassing unreliable text heuristics
   }
 
+  if (pollInterval) clearInterval(pollInterval);
   finalUrl = page.url();
   
   let videoBinary = null;
@@ -311,6 +325,20 @@ async function v7AttemptLogin({ browserlessUrl, site, username, passwords, scree
         return true;
       };
       const debugReport = { steps: [], started_at: new Date().toISOString(), login_url: loginUrl, recording_mode: 'none', screenshot_mode: screenshotMode };
+
+      let pollInterval = null;
+      let pollIndex = 100;
+      if (screenshotMode === 'poll') {
+        pollInterval = setInterval(() => {
+          page.screenshot({ encoding: 'base64', fullPage: false }).then(base64 => {
+            if (base64) {
+              screenshots.push({ step_label: 'Poll ' + pollIndex, step_index: pollIndex, base64 });
+              pollIndex++;
+            }
+          }).catch(() => {});
+        }, 500);
+      }
+
       const capture = async (step_label, step_index) => {
         const url = page.url();
         const title = await page.title().catch(() => '');
@@ -542,6 +570,20 @@ async function legacyAttemptLogin({ browserlessUrl, site, username, password, sc
         return true;
       };
       const debugReport = { steps: [], started_at: new Date().toISOString(), login_url: loginUrl, recording_mode: 'none', screenshot_mode: screenshotMode };
+
+      let pollInterval = null;
+      let pollIndex = 100;
+      if (screenshotMode === 'poll') {
+        pollInterval = setInterval(() => {
+          page.screenshot({ encoding: 'base64', fullPage: false }).then(base64 => {
+            if (base64) {
+              screenshots.push({ step_label: 'Poll ' + pollIndex, step_index: pollIndex, base64 });
+              pollIndex++;
+            }
+          }).catch(() => {});
+        }, 500);
+      }
+
       const capture = async (step_label, step_index) => {
         const url = page.url();
         const title = await page.title().catch(() => '');

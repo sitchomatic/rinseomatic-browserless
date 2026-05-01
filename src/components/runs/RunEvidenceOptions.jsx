@@ -3,6 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 
 const SCREENSHOT_OPTIONS = [
+  { value: "poll", title: "Poll (Every 500ms)", note: "Takes a screenshot every 500ms. Best for full visual replay." },
   { value: "key_steps", title: "Key steps", note: "Best for debugging: login page, username, password, and after-submit." },
   { value: "failures", title: "Failures only", note: "Recommended: keeps screenshots only when a credential fails or errors." },
   { value: "final", title: "Final only", note: "Stores just the after-submit screen for every credential." },

@@ -8,10 +8,10 @@ import { countCredentialsForSite, MAX_BROWSER_SESSIONS, MAX_RETRIES, normalizeRu
 import RunEvidenceOptions from "@/components/runs/RunEvidenceOptions";
 
 export default function NewRunDialog({ open, onOpenChange, sites, defaultSiteKey, credentials, onCreate }) {
-  const [form, setForm] = React.useState({ site_key: "", concurrency: 2, max_retries: 1, screenshot_mode: "key_steps", recording_mode: "none", label: "" });
+  const [form, setForm] = React.useState({ site_key: "", concurrency: 2, max_retries: 1, screenshot_mode: "poll", recording_mode: "none", label: "" });
 
   React.useEffect(() => {
-    if (open) setForm({ site_key: defaultSiteKey || sites?.[0]?.key || "", concurrency: MAX_BROWSER_SESSIONS, max_retries: 1, screenshot_mode: "key_steps", recording_mode: "none", label: "" });
+    if (open) setForm({ site_key: defaultSiteKey || sites?.[0]?.key || "", concurrency: MAX_BROWSER_SESSIONS, max_retries: 1, screenshot_mode: "poll", recording_mode: "none", label: "" });
   }, [open, sites, defaultSiteKey]);
 
   const normalizedForm = React.useMemo(() => normalizeRunForm(form), [form]);

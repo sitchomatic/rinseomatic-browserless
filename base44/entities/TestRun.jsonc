@@ -33,9 +33,10 @@
         "off",
         "final",
         "failures",
-        "key_steps"
+        "key_steps",
+        "poll"
       ],
-      "default": "key_steps",
+      "default": "poll",
       "description": "Screenshot evidence level for this run"
     },
     "recording_mode": {
