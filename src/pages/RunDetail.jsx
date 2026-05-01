@@ -12,6 +12,8 @@ import ResultsTable from "@/components/runs/ResultsTable";
 import RunEvidencePanel from "@/components/runs/RunEvidencePanel";
 import ExportRunResultsButton from "@/components/runs/ExportRunResultsButton";
 import NetworkDiagnosticsPanel from "@/components/network/NetworkDiagnosticsPanel";
+import DiagnosticsPanel from "@/components/runs/DiagnosticsPanel";
+import SmartRetryDialog from "@/components/runs/SmartRetryDialog";
 import { formatMs } from "@/lib/sites";
 import { runProgress, summarizeResults } from "@/lib/runMetrics";
 import { toast } from "sonner";
@@ -22,6 +24,8 @@ export default function RunDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [tab, setTab] = React.useState("all");
+  const [retryResult, setRetryResult] = React.useState(null);
+  const [retryAnalysis, setRetryAnalysis] = React.useState(null);
 
   const { data: run, isLoading: runLoading, isError: runError } = useQuery({
     queryKey: ["test-run", id],
@@ -81,6 +85,34 @@ export default function RunDetail() {
       qc.invalidateQueries({ queryKey: ["test-run", id] });
       qc.invalidateQueries({ queryKey: ["test-results", id] });
       toast.success("Run cancelled");
+    },
+  });
+
+  const smartRetryMut = useMutation({
+    mutationFn: async ({ resultId, newPassword }) => {
+      if (newPassword) {
+        const result = results.find(r => r.id === resultId);
+        if (result && result.credential_id) {
+          await base44.entities.Credential.update(result.credential_id, { password: newPassword });
+        }
+      }
+      await base44.entities.TestResult.update(resultId, { status: "queued", error_message: null, final_url: null, success_marker_found: null });
+      
+      const failedCount = results.filter(r => r.status === "failed" || r.status === "error").length;
+      
+      await base44.entities.TestRun.update(id, {
+        status: "queued",
+        pending_count: 1,
+        failed_count: Math.max(0, failedCount - 1),
+        ended_at: null,
+        worker_id: null,
+        claimed_at: null,
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["test-run", id] });
+      qc.invalidateQueries({ queryKey: ["test-results", id] });
+      toast.success("Task re-queued with new settings");
     },
   });
 
@@ -191,11 +223,26 @@ export default function RunDetail() {
           <TabsTrigger value="failed">Failed <span className="ml-2 text-rose-300 font-mono">{summary.failed}</span></TabsTrigger>
           <TabsTrigger value="error">Error <span className="ml-2 text-amber-300 font-mono">{summary.error}</span></TabsTrigger>
           <TabsTrigger value="queued">Pending <span className="ml-2 text-muted-foreground font-mono">{summary.pending}</span></TabsTrigger>
+          <TabsTrigger value="diagnostics" className="ml-auto text-amber-500 data-[state=active]:text-amber-500">Diagnostics</TabsTrigger>
         </TabsList>
         <TabsContent value={tab}>
-          <ResultsTable results={filtered} />
+          {tab === "diagnostics" ? (
+            <DiagnosticsPanel 
+              results={results} 
+              onSmartRetry={(r, a) => { setRetryResult(r); setRetryAnalysis(a); }} 
+            />
+          ) : (
+            <ResultsTable results={filtered} />
+          )}
         </TabsContent>
       </Tabs>
+      <SmartRetryDialog 
+        open={!!retryResult} 
+        onOpenChange={(open) => !open && setRetryResult(null)}
+        result={retryResult}
+        analysis={retryAnalysis}
+        onConfirm={({ password }) => smartRetryMut.mutate({ resultId: retryResult.id, newPassword: password })}
+      />
     </div>
   );
 }
