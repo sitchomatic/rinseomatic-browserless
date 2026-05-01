@@ -193,66 +193,74 @@ async function v7PerformLoginOnPage(page, site, username, passwords, recordingMo
     if (base64) screenshots.push({ step_label, step_index, base64 });
   };
 
-  await page.goto(site.login_url, { waitUntil, timeout: navTimeout });
-  await capture('01 V7 page loaded', 1);
-
-  await page.waitForSelector(userSel, { visible: true, timeout: selTimeout });
-  await page.waitForSelector(passSel, { visible: true, timeout: selTimeout });
-  await page.waitForSelector(submitSel, { visible: true, timeout: selTimeout });
-
   let finalUrl = page.url();
   let markerFound = false;
   let workingPassword = null;
   let earlyStop = false;
   let earlyStopReason = '';
 
-  for (let i = 0; i < passwords.length; i++) {
-    const pass = passwords[i];
-    
-    await page.click(userSel, { clickCount: 3 });
-    await page.type(userSel, username, { delay: typeDelay || (Math.floor(Math.random() * 100) + 50) });
-    
-    await page.click(passSel, { clickCount: 3 });
-    await page.type(passSel, pass, { delay: typeDelay || (Math.floor(Math.random() * 100) + 50) });
-    
-    await capture('02 V7 creds entered attempt ' + (i+1), 2 + (i*10));
-    
-    await page.click(submitSel);
-    
-    await new Promise(r => setTimeout(r, i === 0 ? 400 : 700));
-    await capture('03 V7 post-submit attempt ' + (i+1), 3 + (i*10));
-    
-    await new Promise(r => setTimeout(r, waitMs));
-    
-    const pageText = await page.evaluate(() => document.body.innerText.toLowerCase());
-    
-    const isSuccessSelFound = await page.evaluate((sel) => {
-      const el = document.querySelector(sel);
-      return el ? el.getBoundingClientRect().width > 0 : false;
-    }, successSel);
+  try {
+    await page.goto(site.login_url, { waitUntil, timeout: navTimeout });
+    await capture('01 V7 page loaded', 1);
 
-    const currentUrl = page.url();
-    const loginMarker = site.login_url_marker || '/login';
-    const successUrlContains = site.success_url_contains || '';
+    await page.waitForSelector(userSel, { visible: true, timeout: selTimeout });
+    await page.waitForSelector(passSel, { visible: true, timeout: selTimeout });
+    await page.waitForSelector(submitSel, { visible: true, timeout: selTimeout });
 
-    let isWorking = false;
-    if (isSuccessSelFound) isWorking = true;
-    if (!isWorking && successUrlContains && currentUrl.includes(successUrlContains)) isWorking = true;
-    if (loginMarker && currentUrl.includes(loginMarker)) isWorking = false;
+    for (let i = 0; i < passwords.length; i++) {
+      const pass = passwords[i];
+      
+      await page.click(userSel, { clickCount: 3 });
+      await page.type(userSel, username, { delay: typeDelay || (Math.floor(Math.random() * 100) + 50) });
+      
+      await page.click(passSel, { clickCount: 3 });
+      await page.type(passSel, pass, { delay: typeDelay || (Math.floor(Math.random() * 100) + 50) });
+      
+      await capture('02 V7 creds entered attempt ' + (i+1), 2 + (i*10));
+      
+      await page.click(submitSel);
+      
+      await new Promise(r => setTimeout(r, i === 0 ? 400 : 700));
+      await capture('03 V7 post-submit attempt ' + (i+1), 3 + (i*10));
+      
+      await new Promise(r => setTimeout(r, waitMs));
+      
+      const pageText = await page.evaluate(() => document.body.innerText.toLowerCase());
+      
+      const isSuccessSelFound = await page.evaluate((sel) => {
+        const el = document.querySelector(sel);
+        return el ? el.getBoundingClientRect().width > 0 : false;
+      }, successSel);
 
-    if (isWorking) {
-      markerFound = isSuccessSelFound;
-      workingPassword = pass;
-      break;
+      const currentUrl = page.url();
+      const loginMarker = site.login_url_marker || '/login';
+      const successUrlContains = site.success_url_contains || '';
+
+      let isWorking = false;
+      if (isSuccessSelFound) isWorking = true;
+      if (!isWorking && successUrlContains && currentUrl.includes(successUrlContains)) isWorking = true;
+      if (loginMarker && currentUrl.includes(loginMarker)) isWorking = false;
+
+      if (isWorking) {
+        markerFound = isSuccessSelFound;
+        workingPassword = pass;
+        break;
+      }
+      
+      if (pageText.includes('disabled') || pageText.includes('blocked')) {
+        earlyStop = true;
+        earlyStopReason = 'disabled';
+        break;
+      }
     }
-    
-    if (pageText.includes('disabled') || pageText.includes('blocked')) {
-      earlyStop = true;
-      earlyStopReason = 'disabled';
-      break;
-    }
-
-    // Strict DOM-based success validation - bypassing unreliable text heuristics
+  } catch (e) {
+    debugReport.error = e.message;
+    debugReport.stack = e.stack;
+    debugReport.failed_at_url = page.url();
+    const pageText = await page.evaluate(() => document.body.innerText.toLowerCase()).catch(()=>'');
+    debugReport.dom_sample = pageText.slice(0, 3000);
+    earlyStop = true;
+    earlyStopReason = e.message;
   }
 
   if (pollInterval) clearInterval(pollInterval);
@@ -349,65 +357,73 @@ async function v7AttemptLogin({ browserlessUrl, site, username, passwords, scree
         if (base64) screenshots.push({ step_label, step_index, base64 });
       };
 
-      await page.goto(loginUrl, { waitUntil, timeout: navTimeout });
-      await capture('01 V7 page loaded', 1);
-
-      await page.waitForSelector(userSel, { visible: true, timeout: selTimeout });
-      await page.waitForSelector(passSel, { visible: true, timeout: selTimeout });
-      await page.waitForSelector(submitSel, { visible: true, timeout: selTimeout });
-
       let finalUrl = page.url();
       let markerFound = false;
       let workingPassword = null;
       let earlyStop = false;
       let earlyStopReason = '';
 
-      for (let i = 0; i < passwords.length; i++) {
-        const pass = passwords[i];
-        
-        await page.click(userSel, { clickCount: 3 });
-        await page.type(userSel, user, { delay: typeDelay || (Math.floor(Math.random() * 100) + 50) });
-        
-        await page.click(passSel, { clickCount: 3 });
-        await page.type(passSel, pass, { delay: typeDelay || (Math.floor(Math.random() * 100) + 50) });
-        
-        await capture('02 V7 creds entered attempt ' + (i+1), 2 + (i*10));
-        
-        await page.click(submitSel);
-        
-        await new Promise(r => setTimeout(r, i === 0 ? 400 : 700));
-        await capture('03 V7 post-submit attempt ' + (i+1), 3 + (i*10));
-        
-        await new Promise(r => setTimeout(r, waitMs));
-        
-        const pageText = await page.evaluate(() => document.body.innerText.toLowerCase());
-        
-        const isSuccessSelFound = await page.evaluate((sel) => {
-          const el = document.querySelector(sel);
-          return el ? el.getBoundingClientRect().width > 0 : false;
-        }, successSel);
+      try {
+        await page.goto(loginUrl, { waitUntil, timeout: navTimeout });
+        await capture('01 V7 page loaded', 1);
 
-        const currentUrl = page.url();
-        let isWorking = false;
-        if (isSuccessSelFound) isWorking = true;
-        if (!isWorking && successUrlContains && currentUrl.includes(successUrlContains)) isWorking = true;
-        if (loginMarker && currentUrl.includes(loginMarker)) isWorking = false;
+        await page.waitForSelector(userSel, { visible: true, timeout: selTimeout });
+        await page.waitForSelector(passSel, { visible: true, timeout: selTimeout });
+        await page.waitForSelector(submitSel, { visible: true, timeout: selTimeout });
 
-        if (isWorking) {
-          markerFound = true;
-          workingPassword = pass;
-          break;
+        for (let i = 0; i < passwords.length; i++) {
+          const pass = passwords[i];
+          
+          await page.click(userSel, { clickCount: 3 });
+          await page.type(userSel, user, { delay: typeDelay || (Math.floor(Math.random() * 100) + 50) });
+          
+          await page.click(passSel, { clickCount: 3 });
+          await page.type(passSel, pass, { delay: typeDelay || (Math.floor(Math.random() * 100) + 50) });
+          
+          await capture('02 V7 creds entered attempt ' + (i+1), 2 + (i*10));
+          
+          await page.click(submitSel);
+          
+          await new Promise(r => setTimeout(r, i === 0 ? 400 : 700));
+          await capture('03 V7 post-submit attempt ' + (i+1), 3 + (i*10));
+          
+          await new Promise(r => setTimeout(r, waitMs));
+          
+          const pageText = await page.evaluate(() => document.body.innerText.toLowerCase());
+          
+          const isSuccessSelFound = await page.evaluate((sel) => {
+            const el = document.querySelector(sel);
+            return el ? el.getBoundingClientRect().width > 0 : false;
+          }, successSel);
+
+          const currentUrl = page.url();
+          let isWorking = false;
+          if (isSuccessSelFound) isWorking = true;
+          if (!isWorking && successUrlContains && currentUrl.includes(successUrlContains)) isWorking = true;
+          if (loginMarker && currentUrl.includes(loginMarker)) isWorking = false;
+
+          if (isWorking) {
+            markerFound = true;
+            workingPassword = pass;
+            break;
+          }
+          
+          const blockMarkers = ['disabled', 'blocked', 'captcha', 'cloudflare', 'security check', 'access denied', "verify it's you", 'robot', 'hcaptcha', 'too many requests', 'rate limit', 'suspended', 'forbidden', 'unusual activity'];
+          const foundMarker = blockMarkers.find(m => pageText.includes(m));
+          if (foundMarker) {
+            earlyStop = true;
+            earlyStopReason = "blocked_by_" + foundMarker.replace(/ /g, '_');
+            break;
+          }
         }
-        
-        const blockMarkers = ['disabled', 'blocked', 'captcha', 'cloudflare', 'security check', 'access denied', "verify it's you", 'robot', 'hcaptcha', 'too many requests', 'rate limit', 'suspended', 'forbidden', 'unusual activity'];
-        const foundMarker = blockMarkers.find(m => pageText.includes(m));
-        if (foundMarker) {
-          earlyStop = true;
-          earlyStopReason = "blocked_by_" + foundMarker.replace(/ /g, '_');
-          break;
-        }
-
-        // Strict DOM-based success validation - bypassing unreliable text heuristics
+      } catch (e) {
+        debugReport.error = e.message;
+        debugReport.stack = e.stack;
+        debugReport.failed_at_url = page.url();
+        const pageText = await page.evaluate(() => document.body.innerText.toLowerCase()).catch(()=>'');
+        debugReport.dom_sample = pageText.slice(0, 3000);
+        earlyStop = true;
+        earlyStopReason = e.message;
       }
 
       if (pollInterval) clearInterval(pollInterval);
@@ -488,33 +504,44 @@ async function legacyPerformLoginOnPage(page, site, username, password, recordin
     if (base64) screenshots.push({ step_label, step_index, base64 });
   };
 
-  await page.goto(site.login_url, { waitUntil, timeout: navTimeout });
-  await capture('01 login page loaded', 1);
-  await page.waitForSelector(userSel, { timeout: selTimeout });
-  await page.click(userSel, { clickCount: 3 });
-  await page.type(userSel, username, { delay: typeDelay });
-  await capture('02 username entered', 2);
-  await page.waitForSelector(passSel, { timeout: selTimeout });
-  await page.click(passSel, { clickCount: 3 });
-  await page.type(passSel, password, { delay: typeDelay });
-  await capture('03 password entered', 3);
-  await page.waitForSelector(submitSel, { timeout: selTimeout });
-  await page.click(submitSel);
-  await new Promise((resolve) => setTimeout(resolve, waitMs));
-  await capture('04 after submit', 4);
+  let finalUrl = page.url();
+  let markerFound = false;
 
-  const finalUrl = page.url();
-  let markerFound = await page.evaluate((sel) => {
-    const el = document.querySelector(sel);
-    if (!el) return false;
-    const rect = el.getBoundingClientRect();
-    return rect.width > 0 && rect.height > 0;
-  }, successSelector);
+  try {
+    await page.goto(site.login_url, { waitUntil, timeout: navTimeout });
+    await capture('01 login page loaded', 1);
+    await page.waitForSelector(userSel, { timeout: selTimeout });
+    await page.click(userSel, { clickCount: 3 });
+    await page.type(userSel, username, { delay: typeDelay });
+    await capture('02 username entered', 2);
+    await page.waitForSelector(passSel, { timeout: selTimeout });
+    await page.click(passSel, { clickCount: 3 });
+    await page.type(passSel, password, { delay: typeDelay });
+    await capture('03 password entered', 3);
+    await page.waitForSelector(submitSel, { timeout: selTimeout });
+    await page.click(submitSel);
+    await new Promise((resolve) => setTimeout(resolve, waitMs));
+    await capture('04 after submit', 4);
 
-  const loginMarker = site.login_url_marker || '/login';
-  const successUrlContains = site.success_url_contains || '';
-  if (!markerFound && successUrlContains && finalUrl.includes(successUrlContains)) markerFound = true;
-  if (loginMarker && finalUrl.includes(loginMarker)) markerFound = false;
+    finalUrl = page.url();
+    markerFound = await page.evaluate((sel) => {
+      const el = document.querySelector(sel);
+      if (!el) return false;
+      const rect = el.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    }, successSelector);
+
+    const loginMarker = site.login_url_marker || '/login';
+    const successUrlContains = site.success_url_contains || '';
+    if (!markerFound && successUrlContains && finalUrl.includes(successUrlContains)) markerFound = true;
+    if (loginMarker && finalUrl.includes(loginMarker)) markerFound = false;
+  } catch (e) {
+    debugReport.error = e.message;
+    debugReport.stack = e.stack;
+    debugReport.failed_at_url = page.url();
+    const pageText = await page.evaluate(() => document.body.innerText.toLowerCase()).catch(()=>'');
+    debugReport.dom_sample = pageText.slice(0, 3000);
+  }
 
   if (pollInterval) clearInterval(pollInterval);
   let videoBinary = null;
@@ -610,38 +637,49 @@ async function legacyAttemptLogin({ browserlessUrl, site, username, password, sc
         if (base64) screenshots.push({ step_label, step_index, base64 });
       };
 
-      await page.goto(loginUrl, { waitUntil, timeout: navTimeout });
-      await capture('01 login page loaded', 1);
+      let finalUrl = page.url();
+      let markerFound = false;
 
-      await page.waitForSelector(userSel, { timeout: selTimeout });
-      await page.click(userSel, { clickCount: 3 });
-      await page.type(userSel, user, { delay: typeDelay });
-      await capture('02 username entered', 2);
+      try {
+        await page.goto(loginUrl, { waitUntil, timeout: navTimeout });
+        await capture('01 login page loaded', 1);
 
-      await page.waitForSelector(passSel, { timeout: selTimeout });
-      await page.click(passSel, { clickCount: 3 });
-      await page.type(passSel, pass, { delay: typeDelay });
-      await capture('03 password entered', 3);
+        await page.waitForSelector(userSel, { timeout: selTimeout });
+        await page.click(userSel, { clickCount: 3 });
+        await page.type(userSel, user, { delay: typeDelay });
+        await capture('02 username entered', 2);
 
-      await page.waitForSelector(submitSel, { timeout: selTimeout });
-      await page.click(submitSel);
+        await page.waitForSelector(passSel, { timeout: selTimeout });
+        await page.click(passSel, { clickCount: 3 });
+        await page.type(passSel, pass, { delay: typeDelay });
+        await capture('03 password entered', 3);
 
-      await new Promise(r => setTimeout(r, waitMs));
-      await capture('04 after submit', 4);
+        await page.waitForSelector(submitSel, { timeout: selTimeout });
+        await page.click(submitSel);
 
-      const finalUrl = page.url();
-      let markerFound = await page.evaluate((sel) => {
-        const el = document.querySelector(sel);
-        if (!el) return false;
-        const rect = el.getBoundingClientRect();
-        return rect.width > 0 && rect.height > 0;
-      }, successSel);
+        await new Promise(r => setTimeout(r, waitMs));
+        await capture('04 after submit', 4);
 
-      // Support legacy early-exit URL logic
-      const loginMarker = ${JSON.stringify(site.login_url_marker || '/login')};
-      const successUrlContains = ${JSON.stringify(site.success_url_contains || '')};
-      if (!markerFound && successUrlContains && finalUrl.includes(successUrlContains)) markerFound = true;
-      if (loginMarker && finalUrl.includes(loginMarker)) markerFound = false;
+        finalUrl = page.url();
+        markerFound = await page.evaluate((sel) => {
+          const el = document.querySelector(sel);
+          if (!el) return false;
+          const rect = el.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        }, successSel);
+
+        // Support legacy early-exit URL logic
+        const loginMarker = ${JSON.stringify(site.login_url_marker || '/login')};
+        const successUrlContains = ${JSON.stringify(site.success_url_contains || '')};
+        if (!markerFound && successUrlContains && finalUrl.includes(successUrlContains)) markerFound = true;
+        if (loginMarker && finalUrl.includes(loginMarker)) markerFound = false;
+      } catch (e) {
+        debugReport.error = e.message;
+        debugReport.stack = e.stack;
+        debugReport.failed_at_url = page.url();
+        const pageText = await page.evaluate(() => document.body.innerText.toLowerCase()).catch(()=>'');
+        debugReport.dom_sample = pageText.slice(0, 3000);
+      }
 
       if (pollInterval) clearInterval(pollInterval);
       debugReport.finished_at = new Date().toISOString();
