@@ -410,6 +410,7 @@ async function v7AttemptLogin({ browserlessUrl, site, username, passwords, scree
         // Strict DOM-based success validation - bypassing unreliable text heuristics
       }
 
+      if (pollInterval) clearInterval(pollInterval);
       finalUrl = page.url();
       debugReport.finished_at = new Date().toISOString();
       debugReport.final_url = finalUrl;
@@ -463,6 +464,20 @@ async function legacyPerformLoginOnPage(page, site, username, password, recordin
 
   const screenshots = [];
   const debugReport = { steps: [], started_at: new Date().toISOString(), login_url: site.login_url, recording_mode: recordingMode || 'none', screenshot_mode: screenshotMode };
+  
+  let pollInterval = null;
+  let pollIndex = 100;
+  if (screenshotMode === 'poll') {
+    pollInterval = setInterval(() => {
+      page.screenshot({ encoding: 'base64', fullPage: false }).then(base64 => {
+        if (base64) {
+          screenshots.push({ step_label: 'Poll ' + pollIndex, step_index: pollIndex, base64 });
+          pollIndex++;
+        }
+      }).catch(() => {});
+    }, 500);
+  }
+
   const capture = async (step_label, step_index) => {
     const url = page.url();
     const title = await page.title().catch(() => '');
@@ -501,6 +516,7 @@ async function legacyPerformLoginOnPage(page, site, username, password, recordin
   if (!markerFound && successUrlContains && finalUrl.includes(successUrlContains)) markerFound = true;
   if (loginMarker && finalUrl.includes(loginMarker)) markerFound = false;
 
+  if (pollInterval) clearInterval(pollInterval);
   let videoBinary = null;
   if (recordingMode === 'video' && recordingStarted) {
     const response = await cdp.send('Browserless.stopRecording').catch(() => null);
@@ -627,6 +643,7 @@ async function legacyAttemptLogin({ browserlessUrl, site, username, password, sc
       if (!markerFound && successUrlContains && finalUrl.includes(successUrlContains)) markerFound = true;
       if (loginMarker && finalUrl.includes(loginMarker)) markerFound = false;
 
+      if (pollInterval) clearInterval(pollInterval);
       debugReport.finished_at = new Date().toISOString();
       debugReport.final_url = finalUrl;
       debugReport.success_marker_found = markerFound;
