@@ -51,6 +51,13 @@ function KeyRow({ knownKey, secretRecord, onSuccess }) {
 
   const saveMut = useMutation({
     mutationFn: async () => {
+      // Step 1: Validate key in backend
+      const validationRes = await base44.functions.invoke("validateApiKey", { name: knownKey.name, value });
+      if (validationRes.data && !validationRes.data.ok) {
+        throw new Error(validationRes.data.error || "Key validation failed");
+      }
+
+      // Step 2: Save to DB
       if (secretRecord) {
         return base44.entities.AppSecret.update(secretRecord.id, { value });
       } else {
@@ -58,7 +65,7 @@ function KeyRow({ knownKey, secretRecord, onSuccess }) {
       }
     },
     onSuccess: () => {
-      toast.success(`${knownKey.label} saved`);
+      toast.success(`${knownKey.label} validated and saved`);
       onSuccess();
     },
     onError: (e) => toast.error(e?.response?.data?.error || e.message || "Failed to save API Key"),
@@ -115,7 +122,7 @@ function KeyRow({ knownKey, secretRecord, onSuccess }) {
               </Button>
             )}
             <Button size="sm" onClick={() => saveMut.mutate()} disabled={saveMut.isPending || !value || value === secretRecord?.value}>
-              <Save className="h-3.5 w-3.5 mr-1" /> Save Key
+              <Save className="h-3.5 w-3.5 mr-1" /> {saveMut.isPending ? "Validating..." : "Save Key"}
             </Button>
           </div>
         </div>
