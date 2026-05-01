@@ -4,7 +4,8 @@ import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/shared/PageHeader";
 import StatusPill from "@/components/shared/StatusPill";
 import { format } from "date-fns";
-import { Activity as ActivityIcon, Code2, Server } from "lucide-react";
+import { Activity as ActivityIcon, Code2, Server, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function Activity() {
   const { data: logs = [], isLoading } = useQuery({
@@ -13,12 +14,30 @@ export default function Activity() {
     refetchInterval: 5000,
   });
 
+  const handleExport = () => {
+    if (!logs.length) return;
+    const header = "Date,Function,Status,Run ID,Metadata\n";
+    const csv = logs.map(l => `"${format(new Date(l.created_date), "yyyy-MM-dd HH:mm:ss")}","${l.function_name}","${l.status}","${l.run_id || ''}","${(l.metadata || '').replace(/"/g, '""')}"`).join("\n");
+    const blob = new Blob([header + csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `activity_logs_${new Date().toISOString()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="px-6 md:px-10 py-8 max-w-[1400px] mx-auto">
       <PageHeader
         eyebrow="05 · Monitoring"
         title="Activity Log"
         description="History of all Cloud Function executions and automation runs."
+        actions={
+          <Button variant="outline" size="sm" onClick={handleExport} className="gap-2" disabled={logs.length === 0}>
+            <Download className="h-3.5 w-3.5" /> Export CSV
+          </Button>
+        }
       />
 
       <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">

@@ -371,9 +371,11 @@ async function v7AttemptLogin({ browserlessUrl, site, username, passwords, scree
           break;
         }
         
-        if (pageText.includes('disabled') || pageText.includes('blocked')) {
+        const blockMarkers = ['disabled', 'blocked', 'captcha', 'cloudflare', 'security check', 'access denied', "verify it's you", 'robot', 'hcaptcha', 'too many requests', 'rate limit', 'suspended', 'forbidden', 'unusual activity'];
+        const foundMarker = blockMarkers.find(m => pageText.includes(m));
+        if (foundMarker) {
           earlyStop = true;
-          earlyStopReason = 'disabled';
+          earlyStopReason = "blocked_by_" + foundMarker.replace(/ /g, '_');
           break;
         }
 
@@ -763,8 +765,9 @@ Deno.serve(async (req) => {
         function_name: 'testCredential',
         status: 'error',
         run_id: String(body.run_id || body.result_id || 'manual'),
-        metadata: JSON.stringify({ error: error.message, elapsed_ms: elapsed })
+        metadata: JSON.stringify({ error: error.message, stack: error.stack, payload: body, elapsed_ms: elapsed })
       });
+      await trace(base44, body.run_id || body.result_id, `CRITICAL ERROR: ${error.message}`, 'error', body.site_key || 'unknown');
     } catch (_) {}
     return Response.json({ status: 'error', error_message: error.message, elapsed_ms: elapsed }, { status: 500 });
   }
