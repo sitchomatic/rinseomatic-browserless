@@ -15,6 +15,7 @@ import NordLynxBridgePanel from "@/components/settings/NordLynxBridgePanel";
 import DebugPagePanel from "@/components/settings/DebugPagePanel";
 import SchedulerControlPanel from "@/components/settings/SchedulerControlPanel";
 import AuditLogPanel from "@/components/settings/AuditLogPanel";
+import SiteWizard from "@/components/settings/SiteWizard";
 import { Trash2, Sparkles, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,7 @@ export default function Settings() {
 
   const [draft, setDraft] = React.useState(BLANK_SITE);
   const [confirmDelete, setConfirmDelete] = React.useState(null);
+  const [showWizard, setShowWizard] = React.useState(false);
 
   const saveMut = useMutation({
     mutationFn: async (d) => {
@@ -74,6 +76,9 @@ export default function Settings() {
                 <Sparkles className="h-3.5 w-3.5" /> Seed default sites
               </Button>
             )}
+            <Button size="sm" variant="outline" className="gap-2 text-primary border-primary/30 bg-primary/5 hover:bg-primary/10" onClick={() => setShowWizard(true)} title="Add a new site using the guided setup wizard with live selector validation">
+              <Sparkles className="h-3.5 w-3.5" /> Guided Setup Wizard
+            </Button>
           </div>
         }
       />
@@ -164,6 +169,8 @@ export default function Settings() {
         destructive
         onConfirm={() => { if (confirmDelete) deleteMut.mutate(confirmDelete.id); setConfirmDelete(null); }}
       />
+
+      <SiteWizard open={showWizard} onOpenChange={setShowWizard} />
     </div>
   );
 }

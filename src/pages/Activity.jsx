@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/shared/PageHeader";
 import StatusPill from "@/components/shared/StatusPill";
+import RemediationPanel from "@/components/audit/RemediationPanel";
 import { format } from "date-fns";
 import { Activity as ActivityIcon, Code2, Server, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -40,7 +41,9 @@ export default function Activity() {
         }
       />
 
-      <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+      <RemediationPanel />
+
+      <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden mt-6">
         <div className="px-5 py-4 border-b border-border/50 bg-secondary/20 flex items-center gap-2">
           <ActivityIcon className="h-4 w-4 text-primary" />
           <h2 className="text-sm font-semibold">Execution History</h2>

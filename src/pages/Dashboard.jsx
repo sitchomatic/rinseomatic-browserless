@@ -10,6 +10,7 @@ import MaintenanceStatusBadge from "@/components/dashboard/MaintenanceStatusBadg
 import DashboardVisualSummary from "@/components/dashboard/DashboardVisualSummary";
 import SchedulerHealthCard from "@/components/dashboard/SchedulerHealthCard";
 import NetworkDiagnosticsPanel from "@/components/network/NetworkDiagnosticsPanel";
+import ProxyHealthDashboard from "@/components/dashboard/ProxyHealthDashboard";
 import LiveAuditLog from "@/components/audit/LiveAuditLog";
 import TerminalLiveLog from "@/components/terminal/TerminalLiveLog";
 import { Button } from "@/components/ui/button";
@@ -117,6 +118,8 @@ export default function Dashboard() {
       </div>
 
       <SchedulerHealthCard />
+
+      <ProxyHealthDashboard />
 
       <NetworkDiagnosticsPanel />
 
