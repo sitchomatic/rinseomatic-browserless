@@ -31,18 +31,22 @@ function buildBrowserlessParams(apiKey, site, sessionTimeout, proxyTypeOverride)
   }
 
   if (site.stealth !== false) params.set('stealth', 'true');
+  if (site.humanlike) params.set('humanlike', 'true');
   if (site.block_ads !== false) params.set('blockAds', 'true');
   if (site.block_consent_modals) params.set('blockConsentModals', 'true');
   if (site.headless === false) params.set('headless', 'false');
   if (site.accept_insecure_certs) params.set('acceptInsecureCerts', 'true');
   if (site.slow_mo_ms && site.slow_mo_ms > 0) params.set('slowMo', String(site.slow_mo_ms));
 
-  const args = [];
+  const args = [
+    '--disable-blink-features=AutomationControlled',
+    '--disable-features=IsolateOrigins,site-per-process'
+  ];
   if (site.viewport_width && site.viewport_height) args.push(`--window-size=${site.viewport_width},${site.viewport_height}`);
   if (Array.isArray(site.extra_chrome_args)) {
     for (const a of site.extra_chrome_args) if (a && typeof a === 'string') args.push(a);
   }
-  if (args.length) params.set('launch', JSON.stringify({ args }));
+  params.set('launch', JSON.stringify({ args }));
   return params;
 }
 
@@ -153,12 +157,20 @@ async function v7PerformLoginOnPage(page, site, username, passwords, recordingMo
   const typeDelay = site.type_delay_ms ?? 50;
   const vw = site.viewport_width || 1920;
   const vh = site.viewport_height || 1080;
-  const userAgent = site.user_agent || '';
-  const acceptLang = site.accept_language || '';
+  const userAgent = site.user_agent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
+  const acceptLang = site.accept_language || 'en-US,en;q=0.9';
 
   await page.setViewport({ width: vw, height: vh });
-  if (userAgent) await page.setUserAgent(userAgent);
-  if (acceptLang) await page.setExtraHTTPHeaders({ 'Accept-Language': acceptLang });
+  await page.setUserAgent(userAgent);
+  await page.setExtraHTTPHeaders({
+    'Accept-Language': acceptLang,
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-User': '?1',
+    'Upgrade-Insecure-Requests': '1'
+  });
 
   const cdp = recordingMode ? await page.createCDPSession() : null;
   let recordingStarted = false;
@@ -328,8 +340,8 @@ async function v7AttemptLogin({ browserlessUrl, site, username, passwords, scree
       const waitUntil = ${JSON.stringify(site.wait_until || 'networkidle0')};
       const vw = ${site.viewport_width || 1920};
       const vh = ${site.viewport_height || 1080};
-      const userAgent = ${JSON.stringify(site.user_agent || '')};
-      const acceptLang = ${JSON.stringify(site.accept_language || '')};
+      const userAgent = ${JSON.stringify(site.user_agent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36')};
+      const acceptLang = ${JSON.stringify(site.accept_language || 'en-US,en;q=0.9')};
       const user = ${JSON.stringify(username)};
       const passwords = ${JSON.stringify(passwords)};
       const screenshotMode = ${JSON.stringify(screenshotMode)};
@@ -337,8 +349,16 @@ async function v7AttemptLogin({ browserlessUrl, site, username, passwords, scree
       const successUrlContains = ${JSON.stringify(site.success_url_contains || '')};
 
       await page.setViewport({ width: vw, height: vh });
-      if (userAgent) await page.setUserAgent(userAgent);
-      if (acceptLang) await page.setExtraHTTPHeaders({ 'Accept-Language': acceptLang });
+      await page.setUserAgent(userAgent);
+      await page.setExtraHTTPHeaders({
+        'Accept-Language': acceptLang,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Upgrade-Insecure-Requests': '1'
+      });
 
       const screenshots = [];
       const shouldCaptureScreenshot = (mode, stepIndex) => {
@@ -492,12 +512,20 @@ async function legacyPerformLoginOnPage(page, site, username, password, recordin
   const waitUntil = site.wait_until || 'networkidle0';
   const vw = site.viewport_width || 1920;
   const vh = site.viewport_height || 1080;
-  const userAgent = site.user_agent || '';
-  const acceptLang = site.accept_language || '';
+  const userAgent = site.user_agent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
+  const acceptLang = site.accept_language || 'en-US,en;q=0.9';
 
   await page.setViewport({ width: vw, height: vh });
-  if (userAgent) await page.setUserAgent(userAgent);
-  if (acceptLang) await page.setExtraHTTPHeaders({ 'Accept-Language': acceptLang });
+  await page.setUserAgent(userAgent);
+  await page.setExtraHTTPHeaders({
+    'Accept-Language': acceptLang,
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-User': '?1',
+    'Upgrade-Insecure-Requests': '1'
+  });
 
   const cdp = recordingMode ? await page.createCDPSession() : null;
   let recordingStarted = false;
@@ -624,14 +652,22 @@ async function legacyAttemptLogin({ browserlessUrl, site, username, password, sc
       const selTimeout = ${selTimeout};
       const typeDelay = ${typeDelay};
       const waitUntil = ${JSON.stringify(waitUntil)};
-      const userAgent = ${JSON.stringify(userAgent)};
-      const acceptLang = ${JSON.stringify(acceptLang)};
+      const userAgent = ${JSON.stringify(userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36')};
+      const acceptLang = ${JSON.stringify(acceptLang || 'en-US,en;q=0.9')};
       const user = ${JSON.stringify(username)};
       const pass = ${JSON.stringify(password)};
 
       await page.setViewport({ width: ${vw}, height: ${vh} });
-      if (userAgent) await page.setUserAgent(userAgent);
-      if (acceptLang) await page.setExtraHTTPHeaders({ 'Accept-Language': acceptLang });
+      await page.setUserAgent(userAgent);
+      await page.setExtraHTTPHeaders({
+        'Accept-Language': acceptLang,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Upgrade-Insecure-Requests': '1'
+      });
 
       const screenshots = [];
       const screenshotMode = ${screenshotModeLiteral};

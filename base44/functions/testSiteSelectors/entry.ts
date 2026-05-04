@@ -30,6 +30,17 @@ Deno.serve(async (req) => {
         };
         
         await page.setViewport({ width: 1280, height: 800 });
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
+        await page.setExtraHTTPHeaders({
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+          'Sec-Fetch-Dest': 'document',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Site': 'none',
+          'Sec-Fetch-User': '?1',
+          'Upgrade-Insecure-Requests': '1'
+        });
+        
         await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
         
         const results = {};
@@ -51,7 +62,17 @@ Deno.serve(async (req) => {
       };
     `;
 
-    const res = await fetch("https://production-sfo.browserless.io/function?token=" + apiKey, {
+    const params = new URLSearchParams();
+    params.set('token', apiKey);
+    params.set('stealth', 'true');
+    params.set('headless', 'false');
+    const args = [
+      '--disable-blink-features=AutomationControlled',
+      '--disable-features=IsolateOrigins,site-per-process'
+    ];
+    params.set('launch', JSON.stringify({ args }));
+    
+    const res = await fetch("https://production-sfo.browserless.io/function?" + params.toString(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/javascript' },
       body: fnBody,
