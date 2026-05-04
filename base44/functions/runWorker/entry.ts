@@ -119,10 +119,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Cap concurrency at 4 to align with V7-V9 baseline (multi-concurrency toggle)
+    // Cap concurrency at 6 (1 when WebSocket recording is active to avoid Browserless contention)
     const concurrency = run.recording_mode && run.recording_mode !== 'none'
       ? 1
-      : Math.max(1, Math.min(4, run.concurrency || 4));
+      : Math.max(1, Math.min(6, run.concurrency || 6));
 
     const queued = await base44.asServiceRole.entities.TestResult.filter(
       { run_id, status: 'queued' },

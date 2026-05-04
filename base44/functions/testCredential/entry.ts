@@ -235,14 +235,22 @@ async function v7PerformLoginOnPage(page, site, username, passwords, recordingMo
       await new Promise(r => setTimeout(r, i === 0 ? 400 : 700));
       await capture('03 V7 post-submit attempt ' + (i+1), 3 + (i*10));
       
-      await new Promise(r => setTimeout(r, waitMs));
+      // Poll for success selector or URL change instead of always waiting full waitMs
+      const pollStart = Date.now();
+      let isSuccessSelFound = false;
+      while (Date.now() - pollStart < waitMs) {
+        isSuccessSelFound = await page.evaluate((sel) => {
+          const el = document.querySelector(sel);
+          return el ? el.getBoundingClientRect().width > 0 : false;
+        }, successSel);
+        if (isSuccessSelFound) break;
+        const curUrl = page.url();
+        if (site.success_url_contains && curUrl.includes(site.success_url_contains)) break;
+        if (site.login_url_marker && !curUrl.includes(site.login_url_marker)) break;
+        await new Promise(r => setTimeout(r, 250));
+      }
       
       const pageText = await page.evaluate(() => document.body.innerText.toLowerCase());
-      
-      const isSuccessSelFound = await page.evaluate((sel) => {
-        const el = document.querySelector(sel);
-        return el ? el.getBoundingClientRect().width > 0 : false;
-      }, successSel);
 
       const currentUrl = page.url();
       const loginMarker = site.login_url_marker || '/login';
