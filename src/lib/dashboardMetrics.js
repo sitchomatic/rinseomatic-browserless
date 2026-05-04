@@ -14,7 +14,7 @@ export function buildDashboardMetrics(sites = [], runs = []) {
   for (const site of sites) {
     const lastRun = latestCompletedBySite.get(site.key) || null;
     const working = lastRun?.working_count || 0;
-    const failed = (lastRun?.failed_count || 0) + (lastRun?.error_count || 0);
+    const failed = (lastRun?.failed_count || 0) + (lastRun?.error_count || 0) + (lastRun?.noaccount_count || 0) + (lastRun?.permdisabled_count || 0) + (lastRun?.tempdisabled_count || 0);
 
     totals.working += working;
     totals.failed += failed;

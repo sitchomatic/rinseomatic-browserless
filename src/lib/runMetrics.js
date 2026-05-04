@@ -8,6 +8,9 @@ export function summarizeResults(results = []) {
     if (status === "working") summary.working += 1;
     if (status === "failed") summary.failed += 1;
     if (status === "error") summary.error += 1;
+    if (status === "noaccount") summary.noaccount += 1;
+    if (status === "permdisabled") summary.permdisabled += 1;
+    if (status === "tempdisabled") summary.tempdisabled += 1;
 
     return summary;
   }, {
@@ -16,6 +19,9 @@ export function summarizeResults(results = []) {
     working: 0,
     failed: 0,
     error: 0,
+    noaccount: 0,
+    permdisabled: 0,
+    tempdisabled: 0,
     byStatus: {},
   });
 }

@@ -15,7 +15,10 @@
         "running",
         "completed",
         "cancelled",
-        "failed"
+        "failed",
+        "noaccount",
+        "tempdisabled",
+        "permdisabled"
       ],
       "default": "queued"
     },
@@ -70,6 +73,18 @@
       "default": 0
     },
     "error_count": {
+      "type": "number",
+      "default": 0
+    },
+    "noaccount_count": {
+      "type": "number",
+      "default": 0
+    },
+    "tempdisabled_count": {
+      "type": "number",
+      "default": 0
+    },
+    "permdisabled_count": {
       "type": "number",
       "default": 0
     },

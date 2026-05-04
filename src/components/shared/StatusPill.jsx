@@ -23,6 +23,10 @@ const STATUS_TO_VARIANT = {
   down: "failed",
   rejected: "failed",
   error: "failed",
+  noaccount: "failed",
+
+  permdisabled: "burned",
+  tempdisabled: "warning",
 
   running: "working",
   pending: "working",

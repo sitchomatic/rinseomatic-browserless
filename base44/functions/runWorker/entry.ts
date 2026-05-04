@@ -182,12 +182,17 @@ Deno.serve(async (req) => {
     // Execute tests in parallel (capped at 2, or 1 when WebSocket recording is enabled)
     const siteWithRunOptions = { ...site, screenshot_mode: run.screenshot_mode || 'key_steps', recording_mode: run.recording_mode || 'none' };
     await trace(base44, run_id, `CMD runWorker executing browser tests · claimed=${claimed.length}`, 'debug', run.site_key);
-    const outcomes = await Promise.all(claimed.map((r, index) => testOne(base44, siteWithRunOptions, r, credentials[index])));
+    const outcomes = await Promise.all(claimed.map((r, index) => {
+      const c = credentials[index];
+      if (c && c.status === 'permdisabled') return Promise.resolve({ status: 'permdisabled', error_message: 'Skipped: permdisabled', elapsed_ms: 0, credential: c });
+      if (c && c.cooldown_until && new Date(c.cooldown_until) > new Date()) return Promise.resolve({ status: 'tempdisabled', error_message: 'Skipped: cooldown active', elapsed_ms: 0, credential: c });
+      return testOne(base44, siteWithRunOptions, r, c);
+    }));
     await trace(base44, run_id, `CMD runWorker browser tests returned · statuses=${outcomes.map((o) => o.status).join(',')}`, 'debug', run.site_key);
 
     // Persist results + update run progress incrementally.
     const maxRetries = run.max_retries ?? 1;
-    const progressDelta = { pending: 0, working: 0, failed: 0, errored: 0 };
+    const progressDelta = { pending: 0, working: 0, failed: 0, errored: 0, noaccount: 0, permdisabled: 0, tempdisabled: 0 };
 
     await Promise.all(claimed.map(async (r, i) => {
       const o = outcomes[i];
@@ -199,6 +204,9 @@ Deno.serve(async (req) => {
         progressDelta.pending -= 1;
         if (finalStatus === 'working') progressDelta.working += 1;
         else if (finalStatus === 'failed') progressDelta.failed += 1;
+        else if (finalStatus === 'noaccount') progressDelta.noaccount += 1;
+        else if (finalStatus === 'permdisabled') progressDelta.permdisabled += 1;
+        else if (finalStatus === 'tempdisabled') progressDelta.tempdisabled += 1;
         else progressDelta.errored += 1;
       }
 
@@ -225,16 +233,19 @@ Deno.serve(async (req) => {
       });
 
       // Mirror terminal result back to the Credential record
-      if (!shouldRetry && (o.status === 'working' || o.status === 'failed' || o.status === 'error')) {
+      if (!shouldRetry && ['working', 'failed', 'error', 'noaccount', 'permdisabled', 'tempdisabled'].includes(o.status)) {
         try {
           const existing = o.credential;
           if (existing) {
             const update = {
-              status: o.status === 'working' ? 'working' : o.status === 'failed' ? 'failed' : 'error',
+              status: ['working', 'failed', 'error', 'noaccount', 'permdisabled', 'tempdisabled'].includes(o.status) ? o.status : 'error',
               last_tested: new Date().toISOString(),
               last_result_note: o.error_message || (o.working_password ? `variant matched → ${o.final_url || ''}` : (o.final_url ? `→ ${o.final_url}` : null)),
               attempts: (existing.attempts || 0) + 1,
             };
+            if (o.status === 'tempdisabled') {
+               update.cooldown_until = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+            }
             // If a variant password worked, promote it to primary
             if (o.working_password && o.working_password !== existing.password) {
               const oldPrimary = existing.password;
@@ -257,6 +268,9 @@ Deno.serve(async (req) => {
       working_count: (run.working_count ?? 0) + progressDelta.working,
       failed_count: (run.failed_count ?? 0) + progressDelta.failed,
       error_count: (run.error_count ?? 0) + progressDelta.errored,
+      noaccount_count: (run.noaccount_count ?? 0) + progressDelta.noaccount,
+      permdisabled_count: (run.permdisabled_count ?? 0) + progressDelta.permdisabled,
+      tempdisabled_count: (run.tempdisabled_count ?? 0) + progressDelta.tempdisabled,
       ...(isDone ? {
         status: 'completed',
         ended_at: new Date().toISOString(),

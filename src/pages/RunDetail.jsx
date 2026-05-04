@@ -222,6 +222,9 @@ export default function RunDetail() {
           <TabsTrigger value="working">Working <span className="ml-2 text-emerald-300 font-mono">{summary.working}</span></TabsTrigger>
           <TabsTrigger value="failed">Failed <span className="ml-2 text-rose-300 font-mono">{summary.failed}</span></TabsTrigger>
           <TabsTrigger value="error">Error <span className="ml-2 text-amber-300 font-mono">{summary.error}</span></TabsTrigger>
+          <TabsTrigger value="noaccount">No Account <span className="ml-2 text-rose-300 font-mono">{summary.noaccount || 0}</span></TabsTrigger>
+          <TabsTrigger value="permdisabled">Banned <span className="ml-2 text-orange-300 font-mono">{summary.permdisabled || 0}</span></TabsTrigger>
+          <TabsTrigger value="tempdisabled">Cooldown <span className="ml-2 text-amber-300 font-mono">{summary.tempdisabled || 0}</span></TabsTrigger>
           <TabsTrigger value="queued">Pending <span className="ml-2 text-muted-foreground font-mono">{summary.pending}</span></TabsTrigger>
           <TabsTrigger value="diagnostics" className="ml-auto text-amber-500 data-[state=active]:text-amber-500">Diagnostics</TabsTrigger>
         </TabsList>
