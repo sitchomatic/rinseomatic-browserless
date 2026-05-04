@@ -40,7 +40,8 @@ function buildBrowserlessParams(apiKey, site, sessionTimeout, proxyTypeOverride)
 
   const args = [
     '--disable-blink-features=AutomationControlled',
-    '--disable-features=IsolateOrigins,site-per-process'
+    '--disable-features=IsolateOrigins,site-per-process,SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure',
+    '--disable-third-party-cookie-blocking'
   ];
   if (site.viewport_width && site.viewport_height) args.push(`--window-size=${site.viewport_width},${site.viewport_height}`);
   if (Array.isArray(site.extra_chrome_args)) {

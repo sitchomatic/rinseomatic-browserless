@@ -68,7 +68,8 @@ Deno.serve(async (req) => {
     params.set('headless', 'false');
     const args = [
       '--disable-blink-features=AutomationControlled',
-      '--disable-features=IsolateOrigins,site-per-process'
+      '--disable-features=IsolateOrigins,site-per-process,SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure',
+      '--disable-third-party-cookie-blocking'
     ];
     params.set('launch', JSON.stringify({ args }));
     
