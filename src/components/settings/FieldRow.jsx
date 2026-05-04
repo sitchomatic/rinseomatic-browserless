@@ -15,15 +15,17 @@ export function Field({ label, value, onChange, mono, type = "text", placeholder
 }
 
 export function SelectField({ label, value, options, onChange, hint }) {
+  const safeValue = value === "" ? "__empty__" : (value ?? "__empty__");
   return (
     <div className="grid gap-1">
       <Label className="text-xs">{label}</Label>
-      <Select value={value ?? ""} onValueChange={onChange}>
+      <Select value={safeValue} onValueChange={(v) => onChange(v === "__empty__" ? "" : v)}>
         <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
         <SelectContent>
-          {options.map((opt) => (
-            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-          ))}
+          {options.map((opt) => {
+            const safeOptValue = opt.value === "" ? "__empty__" : opt.value;
+            return <SelectItem key={safeOptValue} value={safeOptValue}>{opt.label}</SelectItem>;
+          })}
         </SelectContent>
       </Select>
       {hint && <div className="text-[10px] text-muted-foreground">{hint}</div>}
